@@ -1,0 +1,6 @@
+/target
+*.html
+*.pdf
+*.pptx
+.DS_Store
+.claude/

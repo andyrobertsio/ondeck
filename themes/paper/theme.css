@@ -1,0 +1,11 @@
+/* paper — overrides on top of base.css. Tokens (palette + serif font) live in
+   theme.toml; these are the few structural tweaks that make it editorial. */
+
+/* Round bullet markers instead of the default squares. */
+.layout-bullets ul > li::before { border-radius: 50%; }
+
+/* Solid accent stat numbers (the base uses a gradient that suits dark themes). */
+.stat-value { background: none; -webkit-background-clip: border-box; color: var(--accent); }
+
+/* A hairline rule under section headings for an editorial feel. */
+.layout-section h1 { border-bottom: 2px solid var(--rule); padding-bottom: 0.2em; }

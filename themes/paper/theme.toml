@@ -1,0 +1,13 @@
+name = "paper"
+
+# A light, editorial theme. It inherits all structure, layouts, and default
+# styling from base.css — and only overrides tokens + a few rules (theme.css).
+[tokens]
+bg = "#faf7f0"
+bg-2 = "#ece5d8"
+fg = "#1f1b16"
+muted = "#7a7268"
+accent = "#b4341c"
+accent-2 = "#1c6b5a"
+rule = "#d9cfbe"
+font = 'Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif'

@@ -1,0 +1,22 @@
+[package]
+name = "ondeck"
+version = "0.1.0"
+edition = "2021"
+description = "Convert structured Markdown into a self-contained HTML presentation (with PDF and PPTX export)"
+license = "MIT"
+readme = "README.md"
+keywords = ["presentation", "slides", "markdown", "html", "cli"]
+categories = ["command-line-utilities"]
+repository = "https://github.com/andyrobertsio/ondeck"
+
+[[bin]]
+name = "ondeck"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+comrak = "0.29"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+zip = { version = "2", default-features = false, features = ["deflate"] }

@@ -1,0 +1,32 @@
+/* bold — high-contrast keynote. Overrides on top of base.css.
+   Heavier type, punchy accent, uppercase section dividers, solid stat numbers. */
+
+h1 { font-weight: 800; letter-spacing: -0.035em; }
+h2 { font-weight: 600; }
+strong { color: var(--accent); }
+
+.layout-title h1 { font-size: clamp(3rem, 9vmin, 6.5rem); }
+.layout-title h2 { color: var(--accent); }
+
+.layout-section h1 {
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--fg);
+  border-left: 0.18em solid var(--accent);
+  padding-left: 0.4em;
+}
+
+/* Square accent bullet, a touch chunkier. */
+.layout-bullets ul > li::before { width: 0.55em; height: 0.55em; border-radius: 0; }
+
+/* Solid electric stat numbers instead of the base gradient. */
+.stat-value {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  color: var(--accent);
+  font-weight: 900;
+}
+
+.layout-statement h1 { font-weight: 800; }
+.layout-quote .slot-body::before { opacity: 0.9; }

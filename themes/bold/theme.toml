@@ -1,0 +1,14 @@
+name = "bold"
+transition = "fade-up"
+
+# A high-contrast keynote theme: near-black, electric accent, heavy type.
+[tokens]
+bg = "#0a0a0a"
+bg-2 = "#171717"
+fg = "#fafafa"
+muted = "#8a8a8a"
+accent = "#d3fb52"
+accent-2 = "#ff5d8f"
+rule = "#2a2a2a"
+frame = "#000000"
+font = '"Helvetica Neue", Helvetica, Arial, sans-serif'
