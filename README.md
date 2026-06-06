@@ -1,5 +1,7 @@
 # ondeck
 
+[![CI](https://github.com/andyrobertsio/ondeck/actions/workflows/ci.yml/badge.svg)](https://github.com/andyrobertsio/ondeck/actions/workflows/ci.yml)
+
 Turn a Markdown file into a polished, **self-contained** HTML presentation —
 then export it to **PDF** or **PowerPoint**. One small Rust binary, no runtime,
 no `node_modules`.
