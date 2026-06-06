@@ -28,7 +28,7 @@ jobs:
             target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@1.96.0
         with:
           targets: ${{ matrix.target }}
@@ -41,6 +41,6 @@ jobs:
           [ "${{ runner.os }}" = "Windows" ] && bin=ondeck.exe
           tar czf "ondeck-${{ matrix.target }}.tar.gz" -C "target/${{ matrix.target }}/release" "$bin"
       - name: Attach to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ondeck-${{ matrix.target }}.tar.gz
