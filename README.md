@@ -288,6 +288,19 @@ See [`themes/paper`](themes/paper) (light) and [`themes/bold`](themes/bold)
 (high-contrast) for worked examples. The full token/layout/inheritance contract
 is in [SPEC.md](SPEC.md).
 
+## Authoring with Claude
+
+This repo ships [Claude](https://claude.com/claude-code) skills (in [`skills/`](skills/))
+that teach Claude to drive `ondeck`:
+
+- **`ondeck-presentation`** — turn notes/an outline/a topic into a deck.
+- **`ondeck-theme`** — create a theme from scratch.
+- **`ondeck-theme-from-deck`** — derive a theme matching an existing presentation
+  or brand (PowerPoint/PDF/images).
+
+Point Claude Code at this repo (or install the skills) and ask it to, e.g., "make
+a deck from these notes" or "create an ondeck theme like our brand template."
+
 ## Development
 
 ```bash
