@@ -18,6 +18,7 @@ use theme::Theme;
 #[derive(Parser)]
 #[command(
     name = "ondeck",
+    version,
     about = "Convert structured Markdown into a self-contained HTML presentation"
 )]
 struct Cli {
