@@ -106,7 +106,7 @@ impl Theme {
     pub fn load(spec: &str) -> Result<Theme, String> {
         if spec == "midnight" {
             // The built-in default theme inherits everything from base.css.
-            return Theme::from_parts(MIDNIGHT_TOML, "");
+            return Theme::from_parts(MIDNIGHT_TOML, "", None);
         }
         let direct = Path::new(spec);
         let under_themes = Path::new("themes").join(spec);
@@ -123,10 +123,12 @@ impl Theme {
         let toml = std::fs::read_to_string(dir.join("theme.toml"))
             .map_err(|e| format!("reading {}: {e}", dir.join("theme.toml").display()))?;
         let css = std::fs::read_to_string(dir.join("theme.css")).unwrap_or_default();
-        Theme::from_parts(&toml, &css)
+        Theme::from_parts(&toml, &css, Some(&dir))
     }
 
-    fn from_parts(toml_src: &str, css_src: &str) -> Result<Theme, String> {
+    /// `asset_base`, when set, is the theme directory: `url(…)` references in the
+    /// theme's CSS (fonts, background images) are inlined as data URIs against it.
+    fn from_parts(toml_src: &str, css_src: &str, asset_base: Option<&Path>) -> Result<Theme, String> {
         let file: ThemeFile =
             toml::from_str(toml_src).map_err(|e| format!("parsing theme.toml: {e}"))?;
 
@@ -139,6 +141,12 @@ impl Theme {
         }
         css.push_str("}\n");
         css.push_str(css_src);
+
+        // Inline the theme's own CSS assets (fonts, background images) so a
+        // theme with self-hosted assets still produces a self-contained deck.
+        if let Some(base) = asset_base {
+            css = crate::assets::inline(&css, base);
+        }
 
         // Layouts: start from the inherited defaults, then override/add.
         let mut layouts = default_layouts();
@@ -184,12 +192,25 @@ mod tests {
     #[test]
     fn overrides_layer_over_defaults() {
         let toml = "name=\"x\"\ntransition=\"zoom\"\n[tokens]\naccent=\"#abc\"\n[layout.bullets]\nbody=\"x4 y3 x27 y18\"\n";
-        let t = Theme::from_parts(toml, ".custom{color:red}").unwrap();
+        let t = Theme::from_parts(toml, ".custom{color:red}", None).unwrap();
         assert_eq!(t.default_transition, "zoom");
         assert!(t.css.contains("--accent:#abc;")); // token override emitted
         assert!(t.css.contains(".custom{color:red}")); // theme.css appended
         assert_eq!(t.layouts["bullets"][0].1.col_start, 4); // layout overridden
         assert!(t.layouts.contains_key("stat")); // other layouts still inherited
+    }
+
+    #[test]
+    fn theme_css_assets_inlined_against_theme_dir() {
+        // examples/chart.svg exists; a theme CSS url() should inline against base.
+        let t = Theme::from_parts(
+            "name=\"t\"",
+            ".x{background:url('chart.svg')}",
+            Some(Path::new("examples")),
+        )
+        .unwrap();
+        assert!(t.css.contains("url('data:image/svg+xml;base64,"));
+        assert!(!t.css.contains("url('chart.svg')"));
     }
 
     #[test]

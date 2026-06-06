@@ -39,6 +39,10 @@ fn mime_for(path: &Path) -> &'static str {
         Some("avif") => "image/avif",
         Some("bmp") => "image/bmp",
         Some("ico") => "image/x-icon",
+        Some("woff2") => "font/woff2",
+        Some("woff") => "font/woff",
+        Some("ttf") => "font/ttf",
+        Some("otf") => "font/otf",
         _ => "application/octet-stream",
     }
 }
@@ -73,4 +77,30 @@ pub fn inline(html: &str, base: &Path) -> String {
         None => c[0].to_string(),
     });
     html.into_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn inlines_url_against_base() {
+        // examples/chart.svg exists relative to the crate root (test cwd).
+        let out = inline("a{background:url('chart.svg')}", Path::new("examples"));
+        assert!(out.contains("url('data:image/svg+xml;base64,"));
+    }
+
+    #[test]
+    fn leaves_remote_and_data_untouched() {
+        let out = inline("<img src=\"https://x/y.png\"><img src=\"data:image/png;base64,AA\">", Path::new("."));
+        assert!(out.contains("https://x/y.png"));
+        assert!(out.contains("data:image/png;base64,AA"));
+    }
+
+    #[test]
+    fn font_mime_types() {
+        assert_eq!(mime_for(Path::new("Inter.woff2")), "font/woff2");
+        assert_eq!(mime_for(Path::new("x.ttf")), "font/ttf");
+    }
 }

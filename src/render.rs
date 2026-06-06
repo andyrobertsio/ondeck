@@ -1,13 +1,62 @@
 //! Renders a parsed [`Document`] into a single self-contained HTML string,
 //! using a loaded [`Theme`] for the grid, layout slots, and styling.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
+use std::io::Write as IoWrite;
 use std::path::Path;
 
-use comrak::plugins::syntect::SyntectAdapter;
+use comrak::adapters::SyntaxHighlighterAdapter;
 use comrak::{markdown_to_html_with_plugins, Options, Plugins};
+use syntect::html::{ClassStyle, ClassedHTMLGenerator};
+use syntect::parsing::SyntaxSet;
+use syntect::util::LinesWithEndings;
 
 use crate::assets;
+
+/// Token classes are prefixed (`syn-keyword`, …) to avoid clashing with deck
+/// classes; they're coloured from theme tokens in base.css.
+const SYN_STYLE: ClassStyle = ClassStyle::SpacedPrefixed { prefix: "syn-" };
+
+/// A comrak highlighter that emits class-based spans (not inline styles), so the
+/// theme's CSS controls code colours.
+struct ClassedHighlighter {
+    syntaxes: SyntaxSet,
+}
+
+impl ClassedHighlighter {
+    fn new() -> Self {
+        Self {
+            syntaxes: SyntaxSet::load_defaults_newlines(),
+        }
+    }
+}
+
+impl SyntaxHighlighterAdapter for ClassedHighlighter {
+    fn write_highlighted(
+        &self,
+        output: &mut dyn IoWrite,
+        lang: Option<&str>,
+        code: &str,
+    ) -> std::io::Result<()> {
+        let syntax = lang
+            .and_then(|l| self.syntaxes.find_syntax_by_token(l))
+            .unwrap_or_else(|| self.syntaxes.find_syntax_plain_text());
+        let mut gen = ClassedHTMLGenerator::new_with_class_style(syntax, &self.syntaxes, SYN_STYLE);
+        for line in LinesWithEndings::from(code) {
+            // On the rare parse hiccup, skip the line rather than abort.
+            let _ = gen.parse_html_for_line_which_includes_newline(line);
+        }
+        output.write_all(gen.finalize().as_bytes())
+    }
+
+    fn write_pre_tag(&self, output: &mut dyn IoWrite, _: HashMap<String, String>) -> std::io::Result<()> {
+        output.write_all(b"<pre>")
+    }
+
+    fn write_code_tag(&self, output: &mut dyn IoWrite, _: HashMap<String, String>) -> std::io::Result<()> {
+        output.write_all(b"<code>")
+    }
+}
 
 use crate::fragments::{self, FragConfig};
 use crate::grid::{parse_at, Rect};
@@ -380,10 +429,10 @@ pub fn render(doc: &Document, theme: &Theme, asset_base: &Path, inline: bool) ->
         .map(|f| format!(" style=\"--frame:{}\"", f.trim()))
         .unwrap_or_default();
 
-    // Code fences are highlighted at build time (self-contained, no client JS).
-    let adapter = SyntectAdapter::new(Some("base16-ocean.dark"));
+    // Code fences are highlighted at build time into theme-coloured CSS classes.
+    let highlighter = ClassedHighlighter::new();
     let mut plugins = Plugins::default();
-    plugins.render.codefence_syntax_highlighter = Some(&adapter);
+    plugins.render.codefence_syntax_highlighter = Some(&highlighter);
 
     let mut slides: String = doc
         .slides
@@ -507,6 +556,13 @@ mod tests {
     fn frame_frontmatter_overrides_letterbox() {
         let html = build("---\nframe: \"#123456\"\n---\n# x\n");
         assert!(html.contains("style=\"--frame:#123456\""));
+    }
+
+    #[test]
+    fn code_is_class_highlighted_not_inline() {
+        let html = build("---\ntheme: midnight\n---\n\n---\nlayout: code\n---\n```rust\nfn main() {}\n```\n");
+        assert!(html.contains("syn-")); // class-based tokens, theme-coloured
+        assert!(html.contains("<pre>"));
     }
 
     #[test]

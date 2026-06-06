@@ -321,8 +321,9 @@ chrome — a good smoke test and reference.
 - PDF/PPTX require a Chromium-family browser. PPTX is **image-per-slide**
   (pixel-perfect, not editable) and does one browser launch per slide, so large
   decks export slowly.
-- Code highlighting uses a fixed dark theme (`base16-ocean.dark`).
-- Only slide-content images are inlined; theme-CSS assets / web fonts are not.
+- Local images and theme assets (including self-hosted fonts referenced from
+  `theme.css`) are inlined; **remote** assets (e.g. a Google Fonts `@import`) are
+  not — self-host them for a fully offline, self-contained deck.
 
 ## License
 

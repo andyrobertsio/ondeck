@@ -202,15 +202,28 @@ code { font-family: var(--mono); background: var(--bg-2); padding: 0.1em 0.35em;
 
 /* --- code -------------------------------------------------------------- */
 .layout-code h1, .layout-code h2 { margin-bottom: 0.6em; }
-.layout-code pre {
+pre {
+  background: var(--bg-2);
   border-radius: 1cqmin;
-  padding: 3cqmin;
+  padding: 2.5cqmin;
   overflow: auto;
   line-height: 1.5;
-  font-size: 1.9cqmin;
+  font-family: var(--mono);
+  font-size: 2cqmin;
+  color: var(--fg);
 }
-.layout-code pre, .layout-code code { font-family: var(--mono); }
-.layout-code code { background: none; padding: 0; border-radius: 0; font-size: inherit; }
+pre code { background: none; padding: 0; border-radius: 0; font-size: inherit; color: inherit; font-family: var(--mono); }
+.layout-code pre { font-size: 1.9cqmin; padding: 3cqmin; }
+
+/* Syntax tokens — class-based (syntect, prefix `syn-`), coloured from theme
+   tokens so highlighting is theme-native and a theme can override it. */
+pre .syn-comment { color: var(--muted); font-style: italic; }
+pre .syn-keyword, pre .syn-storage { color: var(--accent); }
+pre .syn-string { color: var(--accent-2); }
+pre .syn-constant { color: var(--accent-2); }
+pre .syn-entity, pre .syn-support { color: var(--accent); }
+pre .syn-variable { color: var(--fg); }
+pre .syn-punctuation { color: var(--muted); }
 
 /* --- compare ----------------------------------------------------------- */
 .layout-compare .slot-head { justify-content: flex-end; text-align: center; }

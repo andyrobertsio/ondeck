@@ -275,7 +275,9 @@ the binary), a directory path, or a name under `./themes/`. Selected by the
 `--theme` flag, else the deck's `theme:` frontmatter, else `midnight`.
 
 Slide-content images (content + backgrounds) are inlined as base64 data URIs
-(`--no-inline` opts out). Planned: embedding theme-CSS assets / web fonts too.
+(`--no-inline` opts out). A theme's own CSS assets (background images, self-hosted
+fonts via `theme.css` `url()`) are inlined against the theme directory too.
+Remote assets (e.g. a Google Fonts `@import`) are not fetched.
 
 ## Architecture (Rust)
 
@@ -304,7 +306,8 @@ Slide-content images (content + backgrounds) are inlined as base64 data URIs
 - `ondeck watch` (live-reload server) + `ondeck build --open`.
 - Test suite (`cargo test`): parser, grid, fragments, theme, render (19 tests).
 - `free` layout + `at="…"` coordinate escape hatch (any slot may override).
-- Code highlighting at build via comrak's syntect plugin (no client JS).
+- Code highlighting at build via syntect, emitted as **theme-coloured CSS
+  classes** (`syn-*`) — no client JS, and overridable per theme.
 - **Fragments** (`{+}`, `{+n fx}`, `reveal: true`) with a range of transitions
   (`fade`/`fade-*`/`zoom`/`blur`/`rise`/`none`); within-slide runtime stepping;
   print force-reveal.
@@ -325,7 +328,6 @@ Slide-content images (content + backgrounds) are inlined as base64 data URIs
   Pixel-identical to the HTML/PDF; **not editable** (a distribution format). One
   Chrome launch per slide, so large decks are slow.
 
-**Not yet built:** theme-CSS asset / font embedding (only slide-content images
-are inlined; theme `url()`/web-fonts are not); theme-aware code highlight colors
-(fixed `base16-ocean.dark`); presenter view (notes are embedded but unused);
+**Not yet built:** remote asset fetching (a Google Fonts `@import` isn't
+inlined — self-host instead); presenter view (notes are embedded but unused);
 the authoring skill.

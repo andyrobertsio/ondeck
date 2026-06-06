@@ -116,7 +116,7 @@ layout: code
 # The whole deploy
 
 ```bash
-deck build deck.md --pdf out.pdf
+ondeck build deck.md --pdf out.pdf
 rsync -a out.pdf release@host:/srv/decks/
 echo "shipped $(git rev-parse --short HEAD)"
 ```

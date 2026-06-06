@@ -490,6 +490,7 @@ dependencies = [
  "comrak",
  "regex",
  "serde",
+ "syntect",
  "toml",
  "zip",
 ]
