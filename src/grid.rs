@@ -72,7 +72,10 @@ mod tests {
     fn parse_at_inclusive_to_lines() {
         let r = parse_at("x2 y5 x8 y6").unwrap();
         // inclusive cells (2..=8, 5..=6) → CSS grid lines (2/9, 5/7)
-        assert_eq!((r.col_start, r.col_end, r.row_start, r.row_end), (2, 9, 5, 7));
+        assert_eq!(
+            (r.col_start, r.col_end, r.row_start, r.row_end),
+            (2, 9, 5, 7)
+        );
     }
 
     #[test]
@@ -84,6 +87,9 @@ mod tests {
 
     #[test]
     fn rect_style_emits_grid_lines() {
-        assert_eq!(Rect::cells(2, 5, 8, 6).style(), "grid-column:2/9;grid-row:5/7;");
+        assert_eq!(
+            Rect::cells(2, 5, 8, 6).style(),
+            "grid-column:2/9;grid-row:5/7;"
+        );
     }
 }

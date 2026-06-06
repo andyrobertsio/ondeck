@@ -16,7 +16,10 @@ use clap::{Parser, Subcommand};
 use theme::Theme;
 
 #[derive(Parser)]
-#[command(name = "ondeck", about = "Convert structured Markdown into a self-contained HTML presentation")]
+#[command(
+    name = "ondeck",
+    about = "Convert structured Markdown into a self-contained HTML presentation"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -80,8 +83,8 @@ pub fn build_html(
     theme_override: Option<&str>,
     inline: bool,
 ) -> Result<Built, String> {
-    let source = std::fs::read_to_string(input)
-        .map_err(|e| format!("reading {}: {e}", input.display()))?;
+    let source =
+        std::fs::read_to_string(input).map_err(|e| format!("reading {}: {e}", input.display()))?;
     let doc = parser::parse(&source);
 
     let theme_spec = theme_override

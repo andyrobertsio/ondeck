@@ -10,7 +10,7 @@ use regex::{Captures, Regex};
 
 fn base64_encode(data: &[u8]) -> String {
     const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut out = String::with_capacity((data.len() + 2) / 3 * 4);
+    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
         let b0 = chunk[0] as u32;
         let b1 = *chunk.get(1).unwrap_or(&0) as u32;
@@ -18,8 +18,16 @@ fn base64_encode(data: &[u8]) -> String {
         let n = (b0 << 16) | (b1 << 8) | b2;
         out.push(T[((n >> 18) & 63) as usize] as char);
         out.push(T[((n >> 12) & 63) as usize] as char);
-        out.push(if chunk.len() > 1 { T[((n >> 6) & 63) as usize] as char } else { '=' });
-        out.push(if chunk.len() > 2 { T[(n & 63) as usize] as char } else { '=' });
+        out.push(if chunk.len() > 1 {
+            T[((n >> 6) & 63) as usize] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            T[(n & 63) as usize] as char
+        } else {
+            '='
+        });
     }
     out
 }
@@ -60,7 +68,11 @@ fn data_uri(raw: &str, base: &Path) -> Option<String> {
     }
     let full = base.join(p);
     let bytes = std::fs::read(&full).ok()?;
-    Some(format!("data:{};base64,{}", mime_for(&full), base64_encode(&bytes)))
+    Some(format!(
+        "data:{};base64,{}",
+        mime_for(&full),
+        base64_encode(&bytes)
+    ))
 }
 
 /// Inline image references in `html`, resolving relative paths against `base`.
@@ -93,7 +105,10 @@ mod tests {
 
     #[test]
     fn leaves_remote_and_data_untouched() {
-        let out = inline("<img src=\"https://x/y.png\"><img src=\"data:image/png;base64,AA\">", Path::new("."));
+        let out = inline(
+            "<img src=\"https://x/y.png\"><img src=\"data:image/png;base64,AA\">",
+            Path::new("."),
+        );
         assert!(out.contains("https://x/y.png"));
         assert!(out.contains("data:image/png;base64,AA"));
     }

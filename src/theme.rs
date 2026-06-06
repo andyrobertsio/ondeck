@@ -32,7 +32,11 @@ fn default_layouts() -> BTreeMap<String, Vec<(String, Rect)>> {
     m.insert("statement".into(), layout(&[("body", [5, 5, 28, 14])]));
     m.insert(
         "two-col".into(),
-        layout(&[("head", [4, 3, 29, 5]), ("left", [4, 7, 15, 16]), ("right", [18, 7, 29, 16])]),
+        layout(&[
+            ("head", [4, 3, 29, 5]),
+            ("left", [4, 7, 15, 16]),
+            ("right", [18, 7, 29, 16]),
+        ]),
     );
     let stat = layout(&[("head", [4, 3, 29, 5]), ("stats", [4, 7, 29, 13])]);
     m.insert("stat".into(), stat.clone());
@@ -41,10 +45,17 @@ fn default_layouts() -> BTreeMap<String, Vec<(String, Rect)>> {
     m.insert("stat-4".into(), stat);
     m.insert(
         "compare".into(),
-        layout(&[("head", [4, 3, 29, 5]), ("left", [4, 7, 15, 16]), ("right", [18, 7, 29, 16])]),
+        layout(&[
+            ("head", [4, 3, 29, 5]),
+            ("left", [4, 7, 15, 16]),
+            ("right", [18, 7, 29, 16]),
+        ]),
     );
     m.insert("code".into(), layout(&[("body", [4, 3, 29, 16])]));
-    m.insert("quote".into(), layout(&[("body", [5, 5, 28, 12]), ("cite", [5, 13, 28, 15])]));
+    m.insert(
+        "quote".into(),
+        layout(&[("body", [5, 5, 28, 12]), ("cite", [5, 13, 28, 15])]),
+    );
     // media-split: a cover image one side, text the other (`media: right`
     // mirrors). Full-bleed because the slide has no padding.
     m.insert(
@@ -128,7 +139,11 @@ impl Theme {
 
     /// `asset_base`, when set, is the theme directory: `url(…)` references in the
     /// theme's CSS (fonts, background images) are inlined as data URIs against it.
-    fn from_parts(toml_src: &str, css_src: &str, asset_base: Option<&Path>) -> Result<Theme, String> {
+    fn from_parts(
+        toml_src: &str,
+        css_src: &str,
+        asset_base: Option<&Path>,
+    ) -> Result<Theme, String> {
         let file: ThemeFile =
             toml::from_str(toml_src).map_err(|e| format!("parsing theme.toml: {e}"))?;
 

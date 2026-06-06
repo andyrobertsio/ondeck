@@ -150,7 +150,10 @@ pub fn parse(source: &str) -> Document {
         }
     }
 
-    Document { frontmatter, slides }
+    Document {
+        frontmatter,
+        slides,
+    }
 }
 
 #[cfg(test)]
@@ -162,11 +165,20 @@ mod tests {
         let doc = parse(
             "---\ntheme: midnight\ntitle: T\n---\n\n---\nlayout: title\n---\n# Hi\n---\nlayout: bullets\n---\n- a\n",
         );
-        assert_eq!(doc.frontmatter.get("theme").map(String::as_str), Some("midnight"));
+        assert_eq!(
+            doc.frontmatter.get("theme").map(String::as_str),
+            Some("midnight")
+        );
         assert_eq!(doc.slides.len(), 2);
-        assert_eq!(doc.slides[0].meta.get("layout").map(String::as_str), Some("title"));
+        assert_eq!(
+            doc.slides[0].meta.get("layout").map(String::as_str),
+            Some("title")
+        );
         assert!(doc.slides[0].body.contains("# Hi"));
-        assert_eq!(doc.slides[1].meta.get("layout").map(String::as_str), Some("bullets"));
+        assert_eq!(
+            doc.slides[1].meta.get("layout").map(String::as_str),
+            Some("bullets")
+        );
     }
 
     #[test]
@@ -181,6 +193,9 @@ mod tests {
     #[test]
     fn quoted_value_unquoted() {
         let doc = parse("---\nfooter: \"Acme · 2026\"\n---\n# x\n");
-        assert_eq!(doc.frontmatter.get("footer").map(String::as_str), Some("Acme · 2026"));
+        assert_eq!(
+            doc.frontmatter.get("footer").map(String::as_str),
+            Some("Acme · 2026")
+        );
     }
 }

@@ -26,7 +26,9 @@ fn shoot(browser: &str, html_url: &str, n: usize, png_path: &Path) -> Result<(),
         .status()
         .map_err(|e| format!("running {browser}: {e}"))?;
     if !status.success() {
-        return Err(format!("{browser} exited with {status} capturing slide {n}"));
+        return Err(format!(
+            "{browser} exited with {status} capturing slide {n}"
+        ));
     }
     if !png_path.exists() {
         return Err(format!("no screenshot produced for slide {n}"));
@@ -68,28 +70,77 @@ fn write_pptx(out: &Path, pngs: &[Vec<u8>]) -> Result<(), String> {
     let xml = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
     let raw = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
 
-    let put = |zip: &mut zip::ZipWriter<std::fs::File>, name: &str, data: &[u8], opts| -> Result<(), String> {
+    let put = |zip: &mut zip::ZipWriter<std::fs::File>,
+               name: &str,
+               data: &[u8],
+               opts|
+     -> Result<(), String> {
         zip.start_file(name, opts).map_err(|e| e.to_string())?;
         zip.write_all(data).map_err(|e| e.to_string())?;
         Ok(())
     };
 
     let n = pngs.len();
-    put(&mut zip, "[Content_Types].xml", content_types(n).as_bytes(), xml)?;
+    put(
+        &mut zip,
+        "[Content_Types].xml",
+        content_types(n).as_bytes(),
+        xml,
+    )?;
     put(&mut zip, "_rels/.rels", ROOT_RELS.as_bytes(), xml)?;
-    put(&mut zip, "ppt/presentation.xml", presentation(n).as_bytes(), xml)?;
-    put(&mut zip, "ppt/_rels/presentation.xml.rels", presentation_rels(n).as_bytes(), xml)?;
+    put(
+        &mut zip,
+        "ppt/presentation.xml",
+        presentation(n).as_bytes(),
+        xml,
+    )?;
+    put(
+        &mut zip,
+        "ppt/_rels/presentation.xml.rels",
+        presentation_rels(n).as_bytes(),
+        xml,
+    )?;
     put(&mut zip, "ppt/theme/theme1.xml", THEME.as_bytes(), xml)?;
-    put(&mut zip, "ppt/slideMasters/slideMaster1.xml", SLIDE_MASTER.as_bytes(), xml)?;
-    put(&mut zip, "ppt/slideMasters/_rels/slideMaster1.xml.rels", MASTER_RELS.as_bytes(), xml)?;
-    put(&mut zip, "ppt/slideLayouts/slideLayout1.xml", SLIDE_LAYOUT.as_bytes(), xml)?;
-    put(&mut zip, "ppt/slideLayouts/_rels/slideLayout1.xml.rels", LAYOUT_RELS.as_bytes(), xml)?;
+    put(
+        &mut zip,
+        "ppt/slideMasters/slideMaster1.xml",
+        SLIDE_MASTER.as_bytes(),
+        xml,
+    )?;
+    put(
+        &mut zip,
+        "ppt/slideMasters/_rels/slideMaster1.xml.rels",
+        MASTER_RELS.as_bytes(),
+        xml,
+    )?;
+    put(
+        &mut zip,
+        "ppt/slideLayouts/slideLayout1.xml",
+        SLIDE_LAYOUT.as_bytes(),
+        xml,
+    )?;
+    put(
+        &mut zip,
+        "ppt/slideLayouts/_rels/slideLayout1.xml.rels",
+        LAYOUT_RELS.as_bytes(),
+        xml,
+    )?;
 
     for (i, png) in pngs.iter().enumerate() {
         let k = i + 1;
         put(&mut zip, &format!("ppt/media/image{k}.png"), png, raw)?;
-        put(&mut zip, &format!("ppt/slides/slide{k}.xml"), slide_xml().as_bytes(), xml)?;
-        put(&mut zip, &format!("ppt/slides/_rels/slide{k}.xml.rels"), slide_rels(k).as_bytes(), xml)?;
+        put(
+            &mut zip,
+            &format!("ppt/slides/slide{k}.xml"),
+            slide_xml().as_bytes(),
+            xml,
+        )?;
+        put(
+            &mut zip,
+            &format!("ppt/slides/_rels/slide{k}.xml.rels"),
+            slide_rels(k).as_bytes(),
+            xml,
+        )?;
     }
 
     zip.finish().map_err(|e| e.to_string())?;
@@ -269,7 +320,12 @@ mod tests {
         // ".slide+xml" matches the slide content type only (not slideMaster/Layout).
         assert_eq!(content_types(3).matches(".slide+xml").count(), 3);
         assert_eq!(presentation(3).matches("<p:sldId ").count(), 3);
-        assert_eq!(presentation_rels(3).matches("/relationships/slide\"").count(), 3);
+        assert_eq!(
+            presentation_rels(3)
+                .matches("/relationships/slide\"")
+                .count(),
+            3
+        );
         assert!(presentation(1).contains(&format!("cx=\"{SLIDE_CX}\"")));
     }
 }

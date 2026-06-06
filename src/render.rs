@@ -49,11 +49,19 @@ impl SyntaxHighlighterAdapter for ClassedHighlighter {
         output.write_all(gen.finalize().as_bytes())
     }
 
-    fn write_pre_tag(&self, output: &mut dyn IoWrite, _: HashMap<String, String>) -> std::io::Result<()> {
+    fn write_pre_tag(
+        &self,
+        output: &mut dyn IoWrite,
+        _: HashMap<String, String>,
+    ) -> std::io::Result<()> {
         output.write_all(b"<pre>")
     }
 
-    fn write_code_tag(&self, output: &mut dyn IoWrite, _: HashMap<String, String>) -> std::io::Result<()> {
+    fn write_code_tag(
+        &self,
+        output: &mut dyn IoWrite,
+        _: HashMap<String, String>,
+    ) -> std::io::Result<()> {
         output.write_all(b"<code>")
     }
 }
@@ -230,12 +238,20 @@ fn render_stat_grid(instances: &[Instance]) -> String {
 
 /// `image` layout: the image fills the stage; an optional `:::caption` overlays.
 fn render_image(slots: &Slots, plugins: &Plugins) -> String {
-    let img = format!("<div class=\"image-fill\">{}</div>", md(&slots.body, plugins));
+    let img = format!(
+        "<div class=\"image-fill\">{}</div>",
+        md(&slots.body, plugins)
+    );
     let caption = slots
         .named
         .get("caption")
         .and_then(|v| v.first())
-        .map(|i| format!("<div class=\"image-caption\">{}</div>", md(&i.content, plugins)))
+        .map(|i| {
+            format!(
+                "<div class=\"image-caption\">{}</div>",
+                md(&i.content, plugins)
+            )
+        })
         .unwrap_or_default();
     format!("{img}{caption}")
 }
@@ -273,7 +289,11 @@ fn build_cells(
             for (name, instances) in &slots.named {
                 for inst in instances {
                     if let Some(rect) = inst.at {
-                        cells.push_str(&slot(name, &rect, &md_frag(&inst.content, plugins, cfg, counter)));
+                        cells.push_str(&slot(
+                            name,
+                            &rect,
+                            &md_frag(&inst.content, plugins, cfg, counter),
+                        ));
                     }
                 }
             }
@@ -340,7 +360,11 @@ fn render_slide(slide: &Slide, index: usize, theme: &Theme, plugins: &Plugins) -
         .map(|s| s.trim().to_string())
         .unwrap_or_else(|| theme.default_transition.clone());
     let cfg = FragConfig {
-        auto_li: slide.meta.get("reveal").map(|v| v.trim() == "true").unwrap_or(false),
+        auto_li: slide
+            .meta
+            .get("reveal")
+            .map(|v| v.trim() == "true")
+            .unwrap_or(false),
         default_fx,
     };
     let mut counter = 1u32;
@@ -348,14 +372,26 @@ fn render_slide(slide: &Slide, index: usize, theme: &Theme, plugins: &Plugins) -
         style.push_str(&format!("--fx-dur:{};", speed.trim()));
     }
     // media-split: `media: right` mirrors the layout.
-    let media_right = slide.meta.get("media").map(|v| v.trim() == "right").unwrap_or(false);
+    let media_right = slide
+        .meta
+        .get("media")
+        .map(|v| v.trim() == "right")
+        .unwrap_or(false);
     // `image` carries a fit modifier: fit-full (cover, edge-to-edge) or fit-contain.
     if layout == "image" {
         let fit = slide.meta.get("fit").map(|s| s.trim()).unwrap_or("full");
         classes.push(format!("fit-{fit}"));
     }
 
-    let cells = build_cells(&layout, &slots, theme, plugins, &cfg, &mut counter, media_right);
+    let cells = build_cells(
+        &layout,
+        &slots,
+        theme,
+        plugins,
+        &cfg,
+        &mut counter,
+        media_right,
+    );
 
     let class_attr = classes.join(" ");
     let style_attr = if style.is_empty() {
@@ -382,15 +418,37 @@ fn render_slide(slide: &Slide, index: usize, theme: &Theme, plugins: &Plugins) -
 
 fn is_named_color(s: &str) -> bool {
     const NAMED: &[&str] = &[
-        "black", "white", "red", "green", "blue", "yellow", "orange", "purple", "gray", "grey",
-        "cyan", "magenta", "pink", "brown", "navy", "teal", "maroon", "olive", "lime", "aqua",
-        "silver", "gold", "transparent",
+        "black",
+        "white",
+        "red",
+        "green",
+        "blue",
+        "yellow",
+        "orange",
+        "purple",
+        "gray",
+        "grey",
+        "cyan",
+        "magenta",
+        "pink",
+        "brown",
+        "navy",
+        "teal",
+        "maroon",
+        "olive",
+        "lime",
+        "aqua",
+        "silver",
+        "gold",
+        "transparent",
     ];
     NAMED.contains(&s.to_ascii_lowercase().as_str())
 }
 
 fn escape_html(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 pub fn render(doc: &Document, theme: &Theme, asset_base: &Path, inline: bool) -> String {
@@ -408,7 +466,12 @@ pub fn render(doc: &Document, theme: &Theme, asset_base: &Path, inline: bool) ->
         .unwrap_or_else(|| "none".to_string());
 
     // Deck chrome: slide numbers, progress bar, footer (frontmatter toggles).
-    let flag = |k: &str| doc.frontmatter.get(k).map(|v| v.trim() == "true").unwrap_or(false);
+    let flag = |k: &str| {
+        doc.frontmatter
+            .get(k)
+            .map(|v| v.trim() == "true")
+            .unwrap_or(false)
+    };
     let mut deck_classes = String::from("deck");
     let mut chrome = String::new();
     if flag("slide-numbers") {
@@ -420,7 +483,10 @@ pub fn render(doc: &Document, theme: &Theme, asset_base: &Path, inline: bool) ->
         chrome.push_str("<div class=\"deck-progress\"><i></i></div>");
     }
     if let Some(footer) = doc.frontmatter.get("footer") {
-        chrome.push_str(&format!("<div class=\"deck-footer\">{}</div>", escape_html(footer)));
+        chrome.push_str(&format!(
+            "<div class=\"deck-footer\">{}</div>",
+            escape_html(footer)
+        ));
     }
     // Per-deck letterbox colour override (themes set --frame via [tokens]).
     let deck_style = doc
@@ -509,7 +575,9 @@ mod tests {
     fn stat_grid_renders_value() {
         // The first `---…---` block is deck frontmatter, so a single slide with
         // its own frontmatter needs a leading deck-frontmatter block.
-        let html = build("---\ntheme: midnight\n---\n\n---\nlayout: stat\n---\n:::stat\n42% · target\n:::\n");
+        let html = build(
+            "---\ntheme: midnight\n---\n\n---\nlayout: stat\n---\n:::stat\n42% · target\n:::\n",
+        );
         assert!(html.contains("stat-value"));
         assert!(html.contains("42%"));
         assert!(html.contains("target"));
@@ -541,8 +609,14 @@ mod tests {
         let html = build(
             "---\ntheme: midnight\n---\n\n---\nlayout: media-split\nmedia: right\n---\n# H\nText\n:::media\n![](x.png)\n:::\n",
         );
-        assert!(html.contains("grid-column:17/33"), "media should mirror to the right");
-        assert!(html.contains("grid-column:3/15"), "body should mirror to the left");
+        assert!(
+            html.contains("grid-column:17/33"),
+            "media should mirror to the right"
+        );
+        assert!(
+            html.contains("grid-column:3/15"),
+            "body should mirror to the left"
+        );
     }
 
     #[test]
@@ -560,7 +634,9 @@ mod tests {
 
     #[test]
     fn code_is_class_highlighted_not_inline() {
-        let html = build("---\ntheme: midnight\n---\n\n---\nlayout: code\n---\n```rust\nfn main() {}\n```\n");
+        let html = build(
+            "---\ntheme: midnight\n---\n\n---\nlayout: code\n---\n```rust\nfn main() {}\n```\n",
+        );
         assert!(html.contains("syn-")); // class-based tokens, theme-coloured
         assert!(html.contains("<pre>"));
     }

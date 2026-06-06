@@ -64,7 +64,11 @@ fn handle(mut stream: TcpStream, state: &Arc<Mutex<State>>) {
         .unwrap_or("/");
 
     let (status, ctype, body) = if path.starts_with("/__version") {
-        ("200 OK", "text/plain", state.lock().unwrap().version.to_string())
+        (
+            "200 OK",
+            "text/plain",
+            state.lock().unwrap().version.to_string(),
+        )
     } else if path == "/" || path.starts_with("/index.html") || path.starts_with("/?") {
         let html = state.lock().unwrap().html.clone();
         ("200 OK", "text/html; charset=utf-8", inject_reload(&html))
@@ -88,7 +92,10 @@ pub fn serve(
     open: bool,
 ) -> Result<(), String> {
     let built = crate::build_html(&input, theme.as_deref(), inline)?;
-    eprintln!("Built {} slide(s) with theme '{}'", built.slides, built.theme);
+    eprintln!(
+        "Built {} slide(s) with theme '{}'",
+        built.slides, built.theme
+    );
     let state = Arc::new(Mutex::new(State {
         html: built.html,
         version: 1,
@@ -129,11 +136,9 @@ pub fn serve(
         crate::open_in_browser(&url);
     }
 
-    for stream in listener.incoming() {
-        if let Ok(stream) = stream {
-            let state = Arc::clone(&state);
-            thread::spawn(move || handle(stream, &state));
-        }
+    for stream in listener.incoming().flatten() {
+        let state = Arc::clone(&state);
+        thread::spawn(move || handle(stream, &state));
     }
     Ok(())
 }

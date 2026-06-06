@@ -28,12 +28,25 @@ struct Tok {
 fn is_block(name: &str) -> bool {
     matches!(
         name,
-        "p" | "li" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "blockquote" | "pre" | "figure" | "table"
+        "p" | "li"
+            | "h1"
+            | "h2"
+            | "h3"
+            | "h4"
+            | "h5"
+            | "h6"
+            | "blockquote"
+            | "pre"
+            | "figure"
+            | "table"
     )
 }
 
 fn is_void(name: &str) -> bool {
-    matches!(name, "img" | "br" | "hr" | "input" | "col" | "area" | "source")
+    matches!(
+        name,
+        "img" | "br" | "hr" | "input" | "col" | "area" | "source"
+    )
 }
 
 fn tokenize(html: &str) -> Vec<Tok> {
@@ -131,7 +144,11 @@ fn inject(raw: &str, class: &str, step: u32) -> String {
     while i < raw.len() && raw.as_bytes()[i].is_ascii_alphanumeric() {
         i += 1;
     }
-    format!("{} class=\"{class}\" data-step=\"{step}\"{}", &raw[..i], &raw[i..])
+    format!(
+        "{} class=\"{class}\" data-step=\"{step}\"{}",
+        &raw[..i],
+        &raw[i..]
+    )
 }
 
 /// Apply fragment markers to a rendered HTML fragment. `counter` is shared
@@ -194,13 +211,20 @@ mod tests {
     use super::*;
 
     fn cfg(fx: &str, auto: bool) -> FragConfig {
-        FragConfig { auto_li: auto, default_fx: fx.to_string() }
+        FragConfig {
+            auto_li: auto,
+            default_fx: fx.to_string(),
+        }
     }
 
     #[test]
     fn explicit_marker_uses_default_fx() {
         let mut c = 1;
-        let out = apply("<ul><li>a</li><li>b {+}</li></ul>", &cfg("fade", false), &mut c);
+        let out = apply(
+            "<ul><li>a</li><li>b {+}</li></ul>",
+            &cfg("fade", false),
+            &mut c,
+        );
         assert!(out.contains("<li>a</li>")); // unmarked item untouched
         assert!(out.contains("class=\"fragment fx-fade\" data-step=\"1\""));
         assert!(!out.contains("{+}")); // marker stripped
@@ -217,7 +241,11 @@ mod tests {
     #[test]
     fn reveal_auto_steps_top_level_items() {
         let mut c = 1;
-        let out = apply("<ul><li>a</li><li>b</li></ul>", &cfg("fade-up", true), &mut c);
+        let out = apply(
+            "<ul><li>a</li><li>b</li></ul>",
+            &cfg("fade-up", true),
+            &mut c,
+        );
         assert_eq!(out.matches("class=\"fragment fx-fade-up\"").count(), 2);
         assert!(out.contains("data-step=\"1\""));
         assert!(out.contains("data-step=\"2\""));
@@ -226,7 +254,11 @@ mod tests {
     #[test]
     fn nested_items_not_auto_stepped() {
         let mut c = 1;
-        let out = apply("<ul><li>a<ul><li>inner</li></ul></li></ul>", &cfg("fade", true), &mut c);
+        let out = apply(
+            "<ul><li>a<ul><li>inner</li></ul></li></ul>",
+            &cfg("fade", true),
+            &mut c,
+        );
         // only the outer (depth-1) li is a fragment
         assert_eq!(out.matches("fragment").count(), 1);
     }
