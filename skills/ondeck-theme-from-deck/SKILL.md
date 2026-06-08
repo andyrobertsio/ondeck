@@ -14,9 +14,9 @@ description: >-
 Goal: extract the **design language** (palette, fonts, overall feel) from a
 reference and turn it into an ondeck theme. This is an *extraction front-end* to
 normal theme creation — once you have tokens, follow the **ondeck-theme** skill
-for the mechanics (theme.toml/theme.css contract, layout overrides, self-hosted
-fonts, the test-against-the-demo workflow). This skill is about getting accurate
-tokens out of the reference.
+for the mechanics, and `THEMING.md` (top level of the repo) for the complete
+token/selector reference. This skill is about getting accurate tokens out of the
+reference.
 
 ## Route by input type
 

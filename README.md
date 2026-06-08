@@ -285,8 +285,9 @@ body = "x4 y3 x28 y16"
 ```
 
 See [`themes/paper`](themes/paper) (light) and [`themes/bold`](themes/bold)
-(high-contrast) for worked examples. The full token/layout/inheritance contract
-is in [SPEC.md](SPEC.md).
+(high-contrast) for worked examples. **[THEMING.md](THEMING.md) is the complete
+theming reference** — every token, layout selector, slot, syntax-token class, and
+chrome/fragment hook you can style.
 
 ## Authoring with Claude
 

@@ -229,6 +229,10 @@ without runtime changes.
 
 ## Theme contract
 
+> Complete, exhaustive theming reference (every token, layout selector, slot,
+> code-token class, chrome/fragment hook): **[THEMING.md](THEMING.md)**. This
+> section is the architectural overview.
+
 A theme is a directory — **tokens + grid + layouts (TOML) and styling (CSS)**,
 not just a palette.
 

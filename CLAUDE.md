@@ -2,8 +2,11 @@
 
 `ondeck` is a Rust CLI that turns structured Markdown into self-contained HTML
 slide decks, with PDF and PPTX export. Architecture & format live in
-[SPEC.md](SPEC.md); user docs in [README.md](README.md). Keep both up to date
-when behaviour changes.
+[SPEC.md](SPEC.md); user docs in [README.md](README.md); the complete theming
+vocabulary is in [THEMING.md](THEMING.md). Keep these up to date when behaviour
+changes — in particular, **`THEMING.md` must track `src/assets/base.css`**: if you
+add/rename a token, layout class, slot, `syn-*` token, or chrome/fragment hook,
+update THEMING.md (and the theming skills reference it, so don't duplicate it).
 
 ## Before committing (always)
 

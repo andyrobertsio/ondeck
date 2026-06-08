@@ -21,9 +21,13 @@ themes/<name>/
 
 Everything is **inherited** from the engine's base stylesheet and default
 layouts, so a theme can be as small as a name plus a few tokens — you override
-only what you want to change. The full contract is in `SPEC.md` (Theme contract);
-`themes/paper` (light) and `themes/bold` (high-contrast) are worked examples to
-copy from.
+only what you want to change.
+
+**Read `THEMING.md` (top level of the repo) for the complete reference** — every
+token, layout selector, slot name, syntax-token class, and chrome/fragment hook
+you can target. Don't reverse-engineer it from `base.css`; `THEMING.md` is the
+source of truth. `themes/paper` (light) and `themes/bold` (high-contrast) are
+worked examples to copy from.
 
 ## Tokens (theme.toml)
 
@@ -84,7 +88,8 @@ body = "x4 y3 x28 y16"
 
 Anything you can't express with tokens goes here, layered over the base
 stylesheet. The vocabulary is engine-stable: `.slide`, `.slide-content`, `.slot`
-/ `.slot-<name>`, `.layout-<name>`, and the code token classes `pre .syn-*`.
+/ `.slot-<name>`, `.layout-<name>`, and the code token classes `pre .syn-*`. See
+`THEMING.md` for the full list of selectors per layout.
 
 ```css
 /* round bullet markers instead of squares */
