@@ -153,6 +153,7 @@ Layouts are defined as grid-slot rectangles (above). Slots:
 | `stat-3` / `stat-4` | as `stat`, fixed count | Tuned N-column grids (presets over `stat`) |
 | `image` | body `![](src)` + optional `:::caption`; `fit: full\|contain` | Image *is* the content (full-bleed by default) |
 | `code` | (body: fenced code) | Code, highlighted at build (syntect) |
+| `table` | (body: Markdown table) | Themed table; `highlight-col`/`-row`/`row-headers` emphasis |
 | `compare` | `left`, `right` | A vs B |
 | `raw` | (body: raw HTML) | Escape hatch |
 
@@ -167,6 +168,8 @@ Layouts are defined as grid-slot rectangles (above). Slots:
 | `background-fit` | `cover` \| `contain` | For image backgrounds |
 | `background-overlay` | `0`–`1` | Optional darkening scrim. **Off by default.** Opt-in only |
 | `scheme` | `light` \| `dark` | Text treatment override. **Manual only** — we never auto-detect contrast |
+| `highlight-col` / `highlight-row` | `1`–`8` | Emphasize a table column/row (tinted + accent) |
+| `row-headers` | `true` | Style a table's first column as labels |
 
 ## Fragments (incremental reveal)
 
@@ -302,7 +305,8 @@ Remote assets (e.g. a Google Fonts `@import`) are not fetched.
 - **Theme inheritance**: `base.css` + default layouts in the engine; a theme only
   writes overrides. Two reference themes: `midnight` (pure inheritance) + `paper`.
 - Layouts: `title`, `section`, `bullets`, `statement`, `quote`, `two-col`,
-  `media-split`, `stat`, `stat-3`/`stat-4`, `compare`, `code`, `image`, `raw`.
+  `media-split`, `stat`, `stat-3`/`stat-4`, `compare`, `code`, `table`, `image`,
+  `raw`. Themed Markdown tables with column/row/row-header emphasis.
 - Fixed-aspect **stage** (1920×1080 / 16:9 default) with letterbox; pure-CSS
   container-unit scaling; square 32×18 grid; theme-overridable aspect/size.
 - Deck chrome (frontmatter toggles): `slide-numbers`, `progress`, `footer`.

@@ -148,6 +148,7 @@ the implicit `body`/`head`) per layout:
 | stat / stat-3 / stat-4 | `layout-stat` / `-stat-3` / `-stat-4` | `head`, `stats` | `.stat-grid` (`--stat-count` columns), `.stat-value`, `.stat-label` |
 | compare | `layout-compare` | `head`, `left`, `right` | `.slot-left`/`.slot-right` are cards (`--bg-2`); `h3`, `li` |
 | code | `layout-code` | `body` | `pre`, `pre code`, syntax tokens (below) |
+| table | `layout-table` | `body` | `table`/`thead th`/`tbody td`; emphasis classes (see [Tables](#tables--emphasis)) |
 | image | `layout-image` | `body` (+ `caption`) | `.image-fill`, `.layout-image img`, `.fit-contain img`, `.image-caption` |
 | raw | `layout-raw` | `body` | author HTML passes through; `.slide-content` is `display:block` |
 | free | `layout-free` | `block` (repeatable, `at=`) | `.slot-block` |
@@ -179,6 +180,32 @@ The highlighter (syntect, `ClassStyle::SpacedPrefixed{"syn-"}`) emits a class pe
 scope atom, so finer scopes are also targetable (e.g. `.syn-numeric`,
 `.syn-function`). The code block itself is `pre` (`--bg-2` background); the code
 *layout* bumps size via `.layout-code pre`.
+
+### Tables & emphasis
+
+Markdown tables render to `<table>` and are styled from tokens, so they work in
+any layout (the `table` layout just frames one as the slide's focus). Hooks:
+
+| Selector | Styled |
+|---|---|
+| `table` | full width, collapsed borders, `2.4cqmin` |
+| `thead th` | bold, `--rule` underline |
+| `tbody td` | `--rule` row hairlines |
+| `th[align=…]`, `td[align=…]` | Markdown column alignment (`:--`, `--:`, `:--:`) is respected |
+
+**Emphasis** is opt-in via per-slide frontmatter (the engine adds a class to the
+slide; base.css styles it). Column/row indices are 1-based and supported 1–8
+(keep tables modest):
+
+| Frontmatter | Class added | Effect |
+|---|---|---|
+| `highlight-col: N` | `.hl-col-N` | tints column N (`--bg-2`) + accent header |
+| `highlight-row: N` | `.hl-row-N` | tints body row N (`--bg-2`) |
+| `row-headers: true` | `.row-headers` | first column styled as bold labels |
+
+A theme can restyle these (e.g. a stronger highlight) — they're plain CSS
+classes. For `colspan`/`rowspan` or per-cell control, use a `raw` HTML `<table>`;
+it inherits the same table styling.
 
 ### Deck chrome
 

@@ -52,6 +52,7 @@ fn default_layouts() -> BTreeMap<String, Vec<(String, Rect)>> {
         ]),
     );
     m.insert("code".into(), layout(&[("body", [4, 3, 29, 16])]));
+    m.insert("table".into(), layout(&[("body", [3, 3, 30, 16])]));
     m.insert(
         "quote".into(),
         layout(&[("body", [5, 5, 28, 12]), ("cite", [5, 13, 28, 15])]),

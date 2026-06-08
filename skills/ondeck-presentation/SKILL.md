@@ -107,6 +107,7 @@ layout to the content.
 | Image + explanation | `media-split` | `:::media` image one side, text the other (`media: right` to flip) |
 | An image *is* the point | `image` | body `![](src)` + optional `:::caption`; `fit: full|contain` |
 | Code | `code` | fenced code block, syntax-highlighted |
+| Tabular data / a feature matrix | `table` | a Markdown table; keep it modest (≤~6 cols, ≤~8 rows) |
 | Something bespoke | `raw` (raw HTML) or `free` (coordinate placement) | escape hatches; use rarely |
 
 ### Slot examples
@@ -148,6 +149,22 @@ Crews see the next job, route, and parts before they leave the depot.
 ![Depot](depot.jpg)
 :::
 ```
+
+```markdown
+---
+layout: table
+highlight-col: 3      # tint a column (1–8) to call it out; or highlight-row: N
+---
+# Plans
+| Feature | Free | Pro  | Team |
+| ------- | :--: | :--: | ---: |
+| Seats   | 1    | 5    | ∞    |
+| SSO     | —    | —    | ✓    |
+```
+Tables are plain Markdown (column alignment via `:--`/`--:`/`:--:` is respected)
+and styled by the theme. Keep them modest — a slide can't show a spreadsheet; for
+big data, show a chart image or split it. `row-headers: true` styles the first
+column as labels. For `colspan`/`rowspan`, drop to a `raw` HTML table.
 
 ## Fragments (incremental reveal)
 

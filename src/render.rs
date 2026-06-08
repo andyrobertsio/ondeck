@@ -382,6 +382,30 @@ fn render_slide(slide: &Slide, index: usize, theme: &Theme, plugins: &Plugins) -
         let fit = slide.meta.get("fit").map(|s| s.trim()).unwrap_or("full");
         classes.push(format!("fit-{fit}"));
     }
+    // Table emphasis (any slide with a table): highlight a column/row (1-based,
+    // 1–8) or treat the first column as row labels. Styled via base.css classes.
+    if let Some(n) = slide
+        .meta
+        .get("highlight-col")
+        .and_then(|v| v.trim().parse::<u32>().ok())
+    {
+        classes.push(format!("hl-col-{n}"));
+    }
+    if let Some(n) = slide
+        .meta
+        .get("highlight-row")
+        .and_then(|v| v.trim().parse::<u32>().ok())
+    {
+        classes.push(format!("hl-row-{n}"));
+    }
+    if slide
+        .meta
+        .get("row-headers")
+        .map(|v| v.trim() == "true")
+        .unwrap_or(false)
+    {
+        classes.push("row-headers".to_string());
+    }
 
     let cells = build_cells(
         &layout,
@@ -639,6 +663,15 @@ mod tests {
         );
         assert!(html.contains("syn-")); // class-based tokens, theme-coloured
         assert!(html.contains("<pre>"));
+    }
+
+    #[test]
+    fn table_layout_and_emphasis() {
+        let html = build("---\ntheme: midnight\n---\n\n---\nlayout: table\nhighlight-col: 2\nrow-headers: true\n---\n# T\n\n| a | b |\n| - | - |\n| 1 | 2 |\n");
+        assert!(html.contains("layout-table"));
+        assert!(html.contains("hl-col-2"));
+        assert!(html.contains("row-headers"));
+        assert!(html.contains("<table>"));
     }
 
     #[test]

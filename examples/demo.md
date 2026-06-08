@@ -137,6 +137,18 @@ layout: stat-3
 :::
 
 ---
+layout: table
+highlight-col: 3
+---
+# Plans
+
+| Feature   | Free | Pro  | Team |
+| --------- | :--: | :--: | ---: |
+| Seats     | 1    | 5    | ∞    |
+| History   | 7d   | 1y   | 1y   |
+| SSO       | —    | —    | ✓    |
+
+---
 layout: image
 fit: full
 ---

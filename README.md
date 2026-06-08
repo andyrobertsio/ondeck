@@ -167,6 +167,7 @@ Speaker notes — embedded hidden, never shown on the slide.
 | `stat` / `stat-3` / `stat-4` | repeatable `:::stat` (`value · label`) | Big-number slides |
 | `compare` | `:::left` / `:::right` | A vs B cards |
 | `code` | fenced code block | Syntax-highlighted at build |
+| `table` | Markdown table | Themed; `highlight-col`/`-row`/`row-headers` emphasis |
 | `image` | `![](src)` + `:::caption`; `fit: full\|contain` | Image *is* the slide |
 | `raw` | raw HTML | Escape hatch |
 | `free` | `:::block at="x… y…"` | Coordinate placement |
