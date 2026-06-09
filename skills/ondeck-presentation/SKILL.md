@@ -271,3 +271,16 @@ ondeck build talk.md --open     # open the HTML when done
 ```
 Both `--pdf` and `--pptx` need a Chromium-family browser. PPTX does one browser
 launch per slide, so it's slow on large decks.
+
+## Speaker notes & presenting
+
+Add per-slide notes with a `:::notes` block (hidden on the slide). Then present
+with a synced two-window view — audience deck + a presenter dashboard (current &
+next previews, notes, timer, clock):
+
+```bash
+ondeck present talk.md      # opens audience + presenter windows (synced over http)
+```
+From any deck (even a bare `.html`) you can also press **`P`** to open the
+presenter window and **`F`** to fullscreen — nav in either window drives both.
+Write notes for slides where delivery matters; they never show to the audience.

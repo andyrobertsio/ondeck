@@ -74,8 +74,9 @@ use it as the smoke test / reference deck.
 `src/parser.rs` (Markdown→slides) · `render.rs` (slides→HTML, block rendering) ·
 `theme.rs` (themes/templates/blocks + inheritance) · `grid.rs` (rects, `at=`,
 repeat math) · `fragments.rs` ·
-`assets.rs` (data-URI inlining) · `pdf.rs` · `pptx.rs` · `watch.rs` ·
-`assets/runtime.js` (deck runtime — engine plumbing, not themeable) · `themes/`
-(bundled themes). The `default` theme — `themes/default/{base.css, theme.css,
+`assets.rs` (data-URI inlining) · `pdf.rs` · `pptx.rs` · `watch.rs` (live-reload
+`watch` + two-window `present`) · `assets/runtime.js` (deck runtime: nav,
+fragments, transitions, scale-to-fit, presenter view — engine plumbing, not
+themeable) · `themes/` (bundled themes). The `default` theme — `themes/default/{base.css, theme.css,
 theme.toml}` — is the engine baseline (machinery + look + layout data), compiled
 in via `include_str!` and inherited by every theme.

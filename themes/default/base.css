@@ -142,6 +142,61 @@ html, body {
 }
 .deck-progress > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width var(--fx-dur) var(--fx-ease); }
 
+/* --- presenter view (?present=1): a notes/preview dashboard, dark chrome,
+   coloured via tokens. The audience window stays the normal deck. ---------- */
+body.presenter { background: #0b0d12; overflow: hidden; }
+.presenter .deck { display: none; }
+.presenter-view { display: none; }
+body.presenter .presenter-view {
+  display: grid;
+  grid-template-rows: 1fr 28vh;
+  gap: 1.6vh;
+  box-sizing: border-box;
+  height: 100vh;
+  padding: 1.8vh 1.8vw;
+  color: var(--fg);
+  font-family: var(--font);
+}
+.pv-main { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); gap: 1.8vw; min-height: 0; }
+.pv-col { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.pv-aside { gap: 1.6vh; }
+.pv-next-wrap { display: flex; flex-direction: column; min-height: 0; }
+.pv-label { font-size: 1.5vh; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.7vh; }
+.pv-count { color: var(--fg); opacity: 0.65; }
+/* a 16:9 preview box; the mini .stage fills it and slides render via cqmin */
+.pv-screen {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--stage-w) / var(--stage-h);
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 0.8vh;
+  overflow: hidden;
+}
+.pv-screen .stage {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  max-height: none;
+  aspect-ratio: auto;
+}
+.pv-meta { margin-top: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 0.4vh; }
+.pv-timer { font-size: 6vh; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.pv-clock { font-size: 2vh; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pv-notes {
+  overflow-y: auto;
+  background: var(--bg-2);
+  border-radius: 0.8vh;
+  padding: 2vh 2vw;
+  font-size: 2.4vh;
+  line-height: 1.5;
+}
+.pv-notes h1, .pv-notes h2, .pv-notes h3 { font-size: 3vh; margin-bottom: 0.4em; }
+.pv-notes p { margin: 0 0 0.6em; }
+.pv-notes ul, .pv-notes ol { margin: 0 0 0.6em 1.2em; }
+.pv-notes strong { color: var(--fg); }
+.pv-empty { color: var(--muted); font-style: italic; }
+.pv-empty-screen::after { content: "—"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); }
+
 /* --- fragments (incremental reveal) ----------------------------------- */
 .fragment {
   opacity: 0;

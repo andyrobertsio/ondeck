@@ -106,29 +106,26 @@ fn bind_available(start: u16) -> Result<(TcpListener, u16), String> {
     ))
 }
 
-pub fn serve(
-    input: PathBuf,
-    theme: Option<String>,
-    inline: bool,
+type Rebuild = Box<dyn Fn() -> Result<String, String> + Send>;
+
+/// Shared serving core: watch `paths`, rebuild via the closure on change, serve
+/// over http with live reload. With `present`, also opens the presenter window.
+fn run(
+    initial_html: String,
+    rebuild: Rebuild,
+    paths: Vec<PathBuf>,
     port: u16,
     open: bool,
+    present: bool,
 ) -> Result<(), String> {
-    let built = crate::build_html(&input, theme.as_deref(), inline)?;
-    eprintln!(
-        "Built {} slide(s) with theme '{}'",
-        built.slides, built.theme
-    );
     let state = Arc::new(Mutex::new(State {
-        html: built.html,
+        html: initial_html,
         version: 1,
     }));
 
     // Watcher thread: poll mtimes, rebuild on change, bump version.
     {
         let state = Arc::clone(&state);
-        let input = input.clone();
-        let theme = theme.clone();
-        let paths = watch_paths(&input, theme.as_deref());
         thread::spawn(move || {
             let mut last = mtimes(&paths);
             loop {
@@ -136,12 +133,12 @@ pub fn serve(
                 let now = mtimes(&paths);
                 if now != last {
                     last = now;
-                    match crate::build_html(&input, theme.as_deref(), inline) {
-                        Ok(built) => {
+                    match rebuild() {
+                        Ok(html) => {
                             let mut s = state.lock().unwrap();
-                            s.html = built.html;
+                            s.html = html;
                             s.version += 1;
-                            eprintln!("Rebuilt {} slide(s)", built.slides);
+                            eprintln!("Rebuilt.");
                         }
                         Err(e) => eprintln!("error: {e}"),
                     }
@@ -156,8 +153,14 @@ pub fn serve(
     }
     let url = format!("http://127.0.0.1:{bound}/");
     eprintln!("Serving {url} — watching for changes (Ctrl-C to stop)");
+    if present {
+        eprintln!("Presenter view: {url}?present=1  (or press P in the deck)");
+    }
     if open {
         crate::open_in_browser(&url);
+        if present {
+            crate::open_in_browser(&format!("{url}?present=1"));
+        }
     }
 
     for stream in listener.incoming().flatten() {
@@ -165,4 +168,58 @@ pub fn serve(
         thread::spawn(move || handle(stream, &state));
     }
     Ok(())
+}
+
+/// Build a Markdown deck and serve it with live reload.
+pub fn serve(
+    input: PathBuf,
+    theme: Option<String>,
+    inline: bool,
+    port: u16,
+    open: bool,
+) -> Result<(), String> {
+    let built = crate::build_html(&input, theme.as_deref(), inline)?;
+    eprintln!(
+        "Built {} slide(s) with theme '{}'",
+        built.slides, built.theme
+    );
+    let paths = watch_paths(&input, theme.as_deref());
+    let rebuild: Rebuild =
+        Box::new(move || crate::build_html(&input, theme.as_deref(), inline).map(|b| b.html));
+    run(built.html, rebuild, paths, port, open, false)
+}
+
+/// Serve a deck for presenting: opens an audience window and a synced presenter
+/// (notes + previews) window. Accepts a Markdown source (built + watched) or a
+/// prebuilt `.html` (served + watched as-is).
+pub fn present(
+    input: PathBuf,
+    theme: Option<String>,
+    inline: bool,
+    port: u16,
+    open: bool,
+) -> Result<(), String> {
+    let is_html = input
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("html") || e.eq_ignore_ascii_case("htm"));
+    if is_html {
+        let html = std::fs::read_to_string(&input)
+            .map_err(|e| format!("reading {}: {e}", input.display()))?;
+        eprintln!("Serving prebuilt {}", input.display());
+        let paths = vec![input.clone()];
+        let rebuild: Rebuild = Box::new(move || {
+            std::fs::read_to_string(&input).map_err(|e| format!("reading {}: {e}", input.display()))
+        });
+        run(html, rebuild, paths, port, open, true)
+    } else {
+        let built = crate::build_html(&input, theme.as_deref(), inline)?;
+        eprintln!(
+            "Built {} slide(s) with theme '{}'",
+            built.slides, built.theme
+        );
+        let paths = watch_paths(&input, theme.as_deref());
+        let rebuild: Rebuild =
+            Box::new(move || crate::build_html(&input, theme.as_deref(), inline).map(|b| b.html));
+        run(built.html, rebuild, paths, port, open, true)
+    }
 }

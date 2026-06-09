@@ -270,11 +270,44 @@ ondeck watch <input.md> [options]
       --no-inline       don't embed images
   -p, --port <PORT>     server port (default 7321; falls back if busy)
       --no-open         don't open a browser automatically
+
+ondeck present <input.md | input.html> [options]
+  -t, --theme <SPEC>    theme override (Markdown input only)
+      --no-inline       don't embed images (Markdown input only)
+  -p, --port <PORT>     server port (default 7321; falls back if busy)
+      --no-open         don't open browser windows automatically
 ```
 
 > **macOS note:** ports 7000/5000 are held by the AirPlay Receiver (it answers
-> `403`). `watch` defaults to 7321 and auto-falls back to the next free port, so
-> this shouldn't bite — but if you force `-p 7000`, expect the conflict.
+> `403`). `watch`/`present` default to 7321 and auto-fall back to the next free
+> port, so this shouldn't bite — but if you force `-p 7000`, expect the conflict.
+
+## Presenting (speaker notes)
+
+Add per-slide notes with a `:::notes` block (hidden on the slide):
+
+```markdown
+---
+layout: statement
+---
+# Make it boringly reliable
+:::notes
+Land the reliability message — this is the emotional pivot.
+:::
+```
+
+Then open a **two-window presenter view** — audience deck in one, your notes +
+current/next previews + timer/clock in the other, kept in sync (navigating either
+moves both):
+
+```bash
+ondeck present talk.md      # opens audience + presenter windows (http, synced)
+ondeck present talk.html    # also works on a prebuilt deck
+```
+
+Or, from any deck (even a double-clicked `.html`), press **`P`** to open the
+presenter window and **`F`** to fullscreen. `present` is just the convenience that
+serves over http and opens both windows for you.
 
 ## Themes
 
