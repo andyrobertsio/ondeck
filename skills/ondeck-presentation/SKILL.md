@@ -214,13 +214,13 @@ Deck frontmatter: `slide-numbers: true`, `progress: true`, `footer: "…"`,
 
 ## Coordinate escape hatch (rare)
 
-For a genuinely bespoke slide, `layout: free` places blocks on a 32×18 grid:
+For a genuinely bespoke slide, `layout: free` places blocks on a 64×36 grid:
 
 ```markdown
 ---
 layout: free
 ---
-:::block at="x2 y2 x16 y9"
+:::block at="x3 y3 x32 y18"
 # Top-left
 :::
 ```

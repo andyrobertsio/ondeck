@@ -35,7 +35,7 @@ headless browser over that same output.
   media-split, stat, compare, code, table, image, raw, free.
 - **Fixed-aspect stage** (16:9, 1920×1080) that scales to any window with
   letterbox bars — the on-screen view matches the export exactly.
-- **32×18 grid** of **blocks** (the one placed-region primitive) with a
+- **64×36 grid** of **blocks** (the one placed-region primitive) with a
   coordinate escape hatch (`layout: free`, `at="x… y…"`).
 - **Theming**: token + CSS themes with inheritance (a theme can be a few tokens),
   plus **templates** for fixed furniture (logo, watermark). Three built in:
@@ -238,16 +238,16 @@ slide-overridable). `prefers-reduced-motion` is honoured.
 ### Coordinate escape hatch
 
 Coordinates are a power tool, not the default surface. On a `layout: free` slide
-(or any slot via `at=`), place blocks on the 32×18 grid:
+(or any slot via `at=`), place blocks on the 64×36 grid:
 
 ```markdown
 ---
 layout: free
 ---
-:::block at="x2 y2 x16 y9"
+:::block at="x3 y3 x32 y18"
 # Top-left
 :::
-:::block at="x18 y10 x31 y17"
+:::block at="x35 y19 x62 y34"
 A precisely placed block.
 :::
 ```
@@ -332,10 +332,10 @@ frame = "#000000"               # letterbox colour
 [template.brand]                # fixed furniture, applied to every slide
 default = true
 [template.brand.blocks]
-logo = { at = "x26 y2 x28 y3", image = "url('logo.svg')" }   # inlined; or layer="behind" for a watermark
+logo = { at = "x51 y3 x56 y6", image = "url('logo.svg')" }   # inlined; or layer="behind" for a watermark
 
 [layout.bullets.blocks]         # override a layout's blocks (placement, etc.)
-body = { at = "x4 y3 x28 y16" }
+body = { at = "x7 y5 x56 y32" }
 ```
 
 ```css

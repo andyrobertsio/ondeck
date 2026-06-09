@@ -60,9 +60,9 @@ path, or a name under `./themes/`. Built-ins: `default`, `paper`, `bold`.
 name = "my-theme"            # display name
 transition = "fade-up"       # default fragment transition (optional)
 
-[grid]                       # optional; defaults to 32×18
-cols = 32
-rows = 18
+[grid]                       # optional; defaults to 64×36
+cols = 64
+rows = 36
 
 [tokens]                     # emitted as CSS variables (--bg, --accent, …)
 bg = "#0d1017"
@@ -72,10 +72,10 @@ accent = "#7aa2f7"
 [template.brand]             # fixed furniture; one template may be the default
 default = true
 [template.brand.blocks]
-logo = { at = "x27 y1 x31 y3", image = "url('logo.svg')" }
+logo = { at = "x53 y1 x62 y6", image = "url('logo.svg')" }
 
 [layout.bullets.blocks]      # override a layout's blocks
-body = { at = "x4 y3 x28 y16" }   # `at` = "x{c1} y{r1} x{c2} y{r2}", inclusive cells
+body = { at = "x7 y5 x56 y32" }   # `at` = "x{c1} y{r1} x{c2} y{r2}", inclusive cells
 ```
 
 `at` uses the same coordinate syntax as the `at=` escape hatch: cells are
@@ -108,14 +108,14 @@ restyles every layout at once. Defaults below are the engine values (the
 | `fx-dur` | `0.45s` | Transition duration (fragments + slides + progress bar) |
 | `fx-ease` | `cubic-bezier(0.2,0.7,0.2,1)` | Transition easing |
 
-`--cols` / `--rows` are emitted from `[grid]` (defaults 32/18) and drive the
+`--cols` / `--rows` are emitted from `[grid]` (defaults 64/36) and drive the
 slide grid.
 
 ## The grid & stage
 
 - Slides render on a **fixed-aspect stage** (default 1920×1080 = 16:9) that
   scales to fit the viewport, with letterbox bars (`--frame`).
-- The slide is a **`cols`×`rows` CSS grid** (default 32×18). Cells are square
+- The slide is a **`cols`×`rows` CSS grid** (default 64×36). Cells are square
   when `cols:rows == stage aspect` — keep that ratio if you change either.
 - **Sizing uses container-query units** (`cqmin`/`cqw`/`cqh`) resolved against
   the slide, so type and spacing scale with the stage. `1cqmin` = 1% of the
@@ -160,8 +160,8 @@ to every layout that doesn't name its own). A layout selects furniture with
 [template.brand]
 default = true                 # every layout gets this unless it says otherwise
 [template.brand.blocks]
-logo      = { at = "x27 y1 x31 y3", image = "url('logo.svg')" }                       # top-right, front
-watermark = { at = "x1 y14 x10 y17", image = "url('mark.svg')", layer = "behind", opacity = 0.12 }
+logo      = { at = "x53 y1 x62 y6", image = "url('logo.svg')" }                       # top-right, front
+watermark = { at = "x1 y27 x20 y34", image = "url('mark.svg')", layer = "behind", opacity = 0.12 }
 
 [template.bare]                # a furniture-free look for cover/section slides
 [template.bare.blocks]
@@ -361,8 +361,8 @@ cells), e.g. 4:3:
 stage-w = "1440"
 stage-h = "1080"
 [grid]
-cols = 24
-rows = 18
+cols = 48
+rows = 36
 ```
 
 > **PDF caveat:** the print `@page` size is hardcoded `1920px 1080px` in the base

@@ -64,15 +64,15 @@ Land the reliability message here. This is the emotional pivot of the deck.
 layout: free
 background: "linear-gradient(135deg, var(--bg-2), var(--bg))"
 ---
-:::block at="x2 y2 x14 y8"
+:::block at="x3 y3 x28 y16"
 # Top-left
-Placed by coordinates on the 32×18 grid.
+Placed by coordinates on the 64×36 grid.
 :::
-:::block at="x16 y4 x29 y10"
+:::block at="x31 y7 x58 y20"
 ## Right block
-A second region — `x16 y4 x29 y10`.
+A second region — `x31 y7 x58 y20`.
 :::
-:::block at="x6 y13 x25 y17"
+:::block at="x11 y25 x50 y34"
 ### Centered-ish footer block
 This is the escape hatch: explicit placement when a slide needs it.
 :::
