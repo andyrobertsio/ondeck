@@ -67,19 +67,20 @@ impl SyntaxHighlighterAdapter for ClassedHighlighter {
 }
 
 use crate::fragments::{self, FragConfig};
-use crate::grid::{parse_at, Rect};
+use crate::grid::{parse_at, repeat_rects, Rect};
 use crate::parser::{Document, Slide};
-use crate::theme::Theme;
+use crate::theme::{Align, Block, BlockContent, Fit, Layer, ResolvedLayout, Theme};
 
 const RUNTIME_JS: &str = include_str!("assets/runtime.js");
 
-/// One occurrence of a `:::name [at="…"]` slot.
+/// One occurrence of a `:::name [at="…"]` block in the author's Markdown.
 struct Instance {
     at: Option<Rect>,
     content: String,
 }
 
-struct Slots {
+/// What the author wrote: named `:::block`s, loose (unslotted) Markdown, notes.
+struct Authored {
     named: BTreeMap<String, Vec<Instance>>,
     body: String,
     notes: Option<String>,
@@ -93,12 +94,12 @@ fn md(text: &str, plugins: &Plugins) -> String {
     markdown_to_html_with_plugins(text.trim(), &options, plugins)
 }
 
-fn extract_slots(body: &str) -> Slots {
+fn extract_blocks(body: &str) -> Authored {
     let mut named: BTreeMap<String, Vec<Instance>> = BTreeMap::new();
     let mut notes: Option<String> = None;
     let mut loose = String::new();
 
-    // current open slot: (name, at, accumulated content)
+    // current open block: (name, at, accumulated content)
     let mut current: Option<(String, Option<Rect>, String)> = None;
     for line in body.lines() {
         let trimmed = line.trim();
@@ -121,7 +122,7 @@ fn extract_slots(body: &str) -> Slots {
                 loose.push_str(line);
                 loose.push('\n');
             } else {
-                let (name, at) = parse_slot_header(rest);
+                let (name, at) = parse_block_header(rest);
                 current = Some((name, at, String::new()));
             }
         } else {
@@ -133,15 +134,15 @@ fn extract_slots(body: &str) -> Slots {
         loose.push_str(&format!(":::{name}\n{acc}"));
     }
 
-    Slots {
+    Authored {
         named,
         body: loose,
         notes,
     }
 }
 
-/// Parse `name at="x2 y5 x8 y6"` from a slot header line.
-fn parse_slot_header(header: &str) -> (String, Option<Rect>) {
+/// Parse `name at="x2 y5 x8 y6"` from a `:::` header line.
+fn parse_block_header(header: &str) -> (String, Option<Rect>) {
     let name = header.split_whitespace().next().unwrap_or("").to_string();
     let at = header
         .split_once("at=")
@@ -201,157 +202,222 @@ fn slide_styling(slide: &Slide) -> (String, Vec<String>, Option<String>) {
     (style, classes, overlay)
 }
 
-/// Render a slot wrapper: positioned grid cell + scale-to-fit inner element.
-fn slot(name: &str, rect: &Rect, inner: &str) -> String {
-    format!(
-        "<div class=\"slot slot-{name}\" style=\"{}\"><div class=\"fit\">{inner}</div></div>",
-        rect.style()
-    )
-}
-
-/// A slot whose content fills the cell (e.g. a cover image) — no scale-to-fit.
-fn slot_cover(name: &str, rect: &Rect, inner: &str) -> String {
-    format!(
-        "<div class=\"slot slot-{name}\" style=\"{}\">{inner}</div>",
-        rect.style()
-    )
-}
-
-fn render_stat_grid(instances: &[Instance]) -> String {
-    let mut cells = String::new();
-    for inst in instances {
-        let raw = inst.content.trim();
-        let (value, label) = match raw.split_once('·') {
-            Some((v, l)) => (v.trim().to_string(), l.trim().to_string()),
-            None => match raw.split_once('\n') {
-                Some((v, l)) => (v.trim().to_string(), l.trim().to_string()),
-                None => (raw.to_string(), String::new()),
-            },
-        };
-        cells.push_str(&format!(
-            "<div class=\"stat\"><div class=\"stat-value\">{value}</div><div class=\"stat-label\">{label}</div></div>"
-        ));
-    }
-    let count = instances.len().max(1);
-    format!("<div class=\"stat-grid\" style=\"--stat-count:{count};\">{cells}</div>")
-}
-
-/// `image` layout: the image fills the stage; an optional `:::caption` overlays.
-fn render_image(slots: &Slots, plugins: &Plugins) -> String {
-    let img = format!(
-        "<div class=\"image-fill\">{}</div>",
-        md(&slots.body, plugins)
-    );
-    let caption = slots
-        .named
-        .get("caption")
-        .and_then(|v| v.first())
-        .map(|i| {
-            format!(
-                "<div class=\"image-caption\">{}</div>",
-                md(&i.content, plugins)
-            )
-        })
-        .unwrap_or_default();
-    format!("{img}{caption}")
-}
-
 /// Render Markdown, then apply fragment markers (shared slide-wide counter).
 fn md_frag(text: &str, plugins: &Plugins, cfg: &FragConfig, counter: &mut u32) -> String {
     fragments::apply(&md(text, plugins), cfg, counter)
 }
 
-/// Build the inner HTML of `.slide-content` for a given layout.
-fn build_cells(
-    layout: &str,
-    slots: &Slots,
+/// CSS classes for a block: name + layer/fit/alignment hooks (Main/Center/Scale
+/// are the defaults and emit no class).
+fn block_classes(b: &Block) -> String {
+    let mut c = format!("block block-{}", b.name);
+    match b.layer {
+        Layer::Behind => c.push_str(" layer-behind"),
+        Layer::Front => c.push_str(" layer-front"),
+        Layer::Main => {}
+    }
+    match b.fit {
+        Fit::Cover => c.push_str(" fit-cover"),
+        Fit::Contain => c.push_str(" fit-contain"),
+        Fit::Scale => {}
+    }
+    match b.align_x {
+        Align::Start => c.push_str(" ax-start"),
+        Align::End => c.push_str(" ax-end"),
+        Align::Center => {}
+    }
+    match b.align_y {
+        Align::Start => c.push_str(" ay-start"),
+        Align::End => c.push_str(" ay-end"),
+        Align::Center => {}
+    }
+    c
+}
+
+fn block_style(b: &Block, rect: &Rect, extra: &str) -> String {
+    let mut s = rect.style();
+    if let Some(o) = b.opacity {
+        s.push_str(&format!("opacity:{o};"));
+    }
+    s.push_str(extra);
+    s
+}
+
+/// A content block (editable or fixed text). `fit:scale` wraps the content in a
+/// scale-to-fit `.fit`; `cover`/`contain` size the content via CSS instead.
+fn emit_block(b: &Block, rect: &Rect, inner: &str) -> String {
+    let body = if b.fit == Fit::Scale {
+        format!("<div class=\"fit\">{inner}</div>")
+    } else {
+        inner.to_string()
+    };
+    format!(
+        "<div class=\"{}\" style=\"{}\">{}</div>",
+        block_classes(b),
+        block_style(b, rect, ""),
+        body
+    )
+}
+
+/// A fixed image block: the (already-inlined) image fills the cell via
+/// background, sized by `fit` (`cover` crops, anything else contains).
+fn emit_image_block(b: &Block, rect: &Rect, url: &str) -> String {
+    let size = if b.fit == Fit::Cover {
+        "cover"
+    } else {
+        "contain"
+    };
+    let bg = format!("background:{url} center/{size} no-repeat;");
+    format!(
+        "<div class=\"{}\" style=\"{}\"></div>",
+        block_classes(b),
+        block_style(b, rect, &bg)
+    )
+}
+
+/// Render one resolved block. `sink` is the name of the layout's sole editable
+/// block, which receives loose (unslotted) Markdown.
+fn render_one_block(
+    b: &Block,
+    rect: Rect,
+    authored: &Authored,
+    plugins: &Plugins,
+    cfg: &FragConfig,
+    counter: &mut u32,
+    sink: Option<&str>,
+) -> String {
+    match &b.content {
+        BlockContent::Image(url) => emit_image_block(b, &rect, url),
+        BlockContent::Text(t) => emit_block(b, &rect, &md(t, plugins)),
+        BlockContent::Editable => {
+            // Per-block fragment transition overrides the slide/theme default.
+            let bcfg = FragConfig {
+                auto_li: cfg.auto_li,
+                default_fx: b
+                    .transition
+                    .clone()
+                    .unwrap_or_else(|| cfg.default_fx.clone()),
+            };
+            if let Some(rep) = &b.repeat {
+                let insts = authored
+                    .named
+                    .get(&b.name)
+                    .map(|v| v.as_slice())
+                    .unwrap_or(&[]);
+                if insts.is_empty() {
+                    return String::new();
+                }
+                let limit = rep.limit.unwrap_or(insts.len());
+                let rects = repeat_rects(
+                    &rect,
+                    rep.direction,
+                    rep.margin,
+                    insts.len(),
+                    limit,
+                    rep.align,
+                );
+                let mut out = String::new();
+                for (inst, r) in insts.iter().zip(rects.iter()) {
+                    let inner = md_frag(&inst.content, plugins, &bcfg, counter);
+                    out.push_str(&emit_block(b, r, &inner));
+                }
+                out
+            } else {
+                let content =
+                    if let Some(inst) = authored.named.get(&b.name).and_then(|v| v.first()) {
+                        md_frag(&inst.content, plugins, &bcfg, counter)
+                    } else if sink == Some(b.name.as_str()) {
+                        md_frag(&authored.body, plugins, &bcfg, counter)
+                    } else {
+                        String::new()
+                    };
+                if content.trim().is_empty() {
+                    String::new()
+                } else {
+                    emit_block(b, &rect, &content)
+                }
+            }
+        }
+    }
+}
+
+/// Build `.slide-content`: the union of the layout's selected template furniture
+/// and the layout's own blocks.
+fn build_blocks(
+    layout: &ResolvedLayout,
     theme: &Theme,
+    authored: &Authored,
     plugins: &Plugins,
     cfg: &FragConfig,
     counter: &mut u32,
     media_right: bool,
 ) -> String {
-    // raw: the author owns the markup entirely.
-    if layout == "raw" {
-        return slots.body.clone();
+    let mut out = String::new();
+
+    // Template furniture (fixed) — not affected by `media: right`.
+    for b in theme.template_blocks(layout) {
+        out.push_str(&render_one_block(
+            b, b.rect, authored, plugins, cfg, counter, None,
+        ));
     }
-    if layout == "image" {
-        return render_image(slots, plugins);
+
+    // Single-sink: loose Markdown fills the sole editable block.
+    let editable: Vec<&Block> = layout.blocks.iter().filter(|b| b.is_editable()).collect();
+    let sink = if editable.len() == 1 {
+        Some(editable[0].name.as_str())
+    } else {
+        None
+    };
+
+    for b in &layout.blocks {
+        let rect = if media_right {
+            b.rect.mirror_cols(theme.cols)
+        } else {
+            b.rect
+        };
+        out.push_str(&render_one_block(
+            b, rect, authored, plugins, cfg, counter, sink,
+        ));
     }
+    out
+}
 
-    let defs = theme.layouts.get(layout);
-    let mut cells = String::new();
-    let mut body_used = false;
-
-    match defs {
-        // `free` / unknown layout: place every authored slot by its `at=` rect.
-        None => {
-            for (name, instances) in &slots.named {
-                for inst in instances {
-                    if let Some(rect) = inst.at {
-                        cells.push_str(&slot(
-                            name,
-                            &rect,
-                            &md_frag(&inst.content, plugins, cfg, counter),
-                        ));
-                    }
-                }
-            }
-        }
-        Some(defs) => {
-            for (name, default_rect) in defs {
-                // media-split `media: right` mirrors the column placement.
-                let default_rect = if media_right {
-                    default_rect.mirror_cols(theme.cols)
-                } else {
-                    *default_rect
-                };
-
-                // Special slot: stat grid built from repeatable :::stat blocks.
-                if name == "stats" {
-                    if let Some(stats) = slots.named.get("stat") {
-                        let rect = stats.first().and_then(|i| i.at).unwrap_or(default_rect);
-                        cells.push_str(&slot(name, &rect, &render_stat_grid(stats)));
-                    }
-                    continue;
-                }
-
-                // Special slot: a cover image (fills its cell, no scale-to-fit).
-                if name == "media" {
-                    if let Some(inst) = slots.named.get("media").and_then(|v| v.first()) {
-                        let rect = inst.at.unwrap_or(default_rect);
-                        cells.push_str(&slot_cover(name, &rect, &md(&inst.content, plugins)));
-                    }
-                    continue;
-                }
-
-                // Content: named slot if present, else loose body for body/head.
-                let (content, rect) = match slots.named.get(name).and_then(|v| v.first()) {
-                    Some(inst) => (
-                        md_frag(&inst.content, plugins, cfg, counter),
-                        inst.at.unwrap_or(default_rect),
-                    ),
-                    None if (name == "body" || name == "head") && !body_used => {
-                        body_used = true;
-                        (md_frag(&slots.body, plugins, cfg, counter), default_rect)
-                    }
-                    None => continue,
-                };
-                if !content.trim().is_empty() {
-                    cells.push_str(&slot(name, &rect, &content));
-                }
+/// `free` (and unknown) layouts: place every authored `:::name at="…"` block.
+fn build_free(
+    authored: &Authored,
+    plugins: &Plugins,
+    cfg: &FragConfig,
+    counter: &mut u32,
+) -> String {
+    let mut out = String::new();
+    for (name, instances) in &authored.named {
+        for inst in instances {
+            if let Some(rect) = inst.at {
+                out.push_str(&format!(
+                    "<div class=\"block block-{name}\" style=\"{}\"><div class=\"fit\">{}</div></div>",
+                    rect.style(),
+                    md_frag(&inst.content, plugins, cfg, counter)
+                ));
             }
         }
     }
-    cells
+    out
 }
 
 fn render_slide(slide: &Slide, index: usize, theme: &Theme, plugins: &Plugins) -> String {
     let layout = resolve_layout(slide, index);
-    let slots = extract_slots(&slide.body);
+    let authored = extract_blocks(&slide.body);
 
     let (mut style, mut classes, overlay) = slide_styling(slide);
     classes.insert(0, format!("layout-{layout}"));
+    // Mark the selected template so themes can style per-template.
+    if let Some(t) = theme
+        .layouts
+        .get(&layout)
+        .and_then(|l| l.template.as_deref())
+    {
+        classes.push(format!("template-{t}"));
+    }
 
     // Fragment config: reveal flag + default transition (slide → theme → fade).
     let default_fx = slide
@@ -407,15 +473,23 @@ fn render_slide(slide: &Slide, index: usize, theme: &Theme, plugins: &Plugins) -
         classes.push("row-headers".to_string());
     }
 
-    let cells = build_cells(
-        &layout,
-        &slots,
-        theme,
-        plugins,
-        &cfg,
-        &mut counter,
-        media_right,
-    );
+    let cells = if layout == "raw" {
+        // raw: the author owns the markup entirely.
+        authored.body.clone()
+    } else {
+        match theme.layouts.get(&layout) {
+            Some(rl) => build_blocks(
+                rl,
+                theme,
+                &authored,
+                plugins,
+                &cfg,
+                &mut counter,
+                media_right,
+            ),
+            None => build_free(&authored, plugins, &cfg, &mut counter),
+        }
+    };
 
     let class_attr = classes.join(" ");
     let style_attr = if style.is_empty() {
@@ -424,7 +498,7 @@ fn render_slide(slide: &Slide, index: usize, theme: &Theme, plugins: &Plugins) -
         format!(" style=\"{style}\"")
     };
     let overlay = overlay.unwrap_or_default();
-    let notes = slots
+    let notes = authored
         .notes
         .map(|n| format!("<aside class=\"notes\" hidden>{}</aside>", md(&n, plugins)))
         .unwrap_or_default();
@@ -583,33 +657,34 @@ mod tests {
 
     fn build(src: &str) -> String {
         let doc = parser::parse(src);
-        let theme = Theme::load("midnight").unwrap();
+        let theme = Theme::load("default").unwrap();
         render(&doc, &theme, Path::new("."), false) // inline=false: no fs access
     }
 
     #[test]
-    fn layouts_emit_classes_and_slots() {
+    fn layouts_emit_classes_and_blocks() {
         let html = build("---\nlayout: title\n---\n# Hi\n---\nlayout: bullets\n---\n- a\n- b\n");
         assert!(html.contains("class=\"slide layout-title"));
         assert!(html.contains("class=\"slide layout-bullets"));
-        assert!(html.contains("slot slot-body"));
+        assert!(html.contains("block block-body"));
     }
 
     #[test]
-    fn stat_grid_renders_value() {
+    fn repeatable_figures_render_per_entry() {
         // The first `---…---` block is deck frontmatter, so a single slide with
-        // its own frontmatter needs a leading deck-frontmatter block.
+        // its own frontmatter needs a leading deck-frontmatter block. `stat` has
+        // a head + a repeatable figure (two editable blocks → both need `:::`).
         let html = build(
-            "---\ntheme: midnight\n---\n\n---\nlayout: stat\n---\n:::stat\n42% · target\n:::\n",
+            "---\ntheme: default\n---\n\n---\nlayout: stat\n---\n:::head\n# Numbers\n:::\n:::figure\n**42%**\n:::\n:::figure\n**+18**\n:::\n",
         );
-        assert!(html.contains("stat-value"));
+        assert_eq!(html.matches("block block-figure").count(), 2);
         assert!(html.contains("42%"));
-        assert!(html.contains("target"));
+        assert!(html.contains("+18"));
     }
 
     #[test]
     fn free_layout_places_by_coordinates() {
-        let html = build("---\ntheme: midnight\n---\n\n---\nlayout: free\n---\n:::block at=\"x2 y2 x10 y8\"\nHi\n:::\n");
+        let html = build("---\ntheme: default\n---\n\n---\nlayout: free\n---\n:::block at=\"x2 y2 x10 y8\"\nHi\n:::\n");
         assert!(html.contains("grid-column:2/11;grid-row:2/9;"));
     }
 
@@ -631,7 +706,7 @@ mod tests {
     #[test]
     fn media_split_right_mirrors_columns() {
         let html = build(
-            "---\ntheme: midnight\n---\n\n---\nlayout: media-split\nmedia: right\n---\n# H\nText\n:::media\n![](x.png)\n:::\n",
+            "---\ntheme: default\n---\n\n---\nlayout: media-split\nmedia: right\n---\n:::media\n![](x.png)\n:::\n:::body\n# H\nText\n:::\n",
         );
         assert!(
             html.contains("grid-column:17/33"),
@@ -645,7 +720,7 @@ mod tests {
 
     #[test]
     fn background_var_is_color_not_image() {
-        let html = build("---\ntheme: midnight\n---\n\n---\nlayout: statement\nbackground: var(--bg-2)\n---\n# x\n");
+        let html = build("---\ntheme: default\n---\n\n---\nlayout: statement\nbackground: var(--bg-2)\n---\n# x\n");
         assert!(html.contains("background-color:var(--bg-2);"));
         assert!(!html.contains("url('var"));
     }
@@ -659,7 +734,7 @@ mod tests {
     #[test]
     fn code_is_class_highlighted_not_inline() {
         let html = build(
-            "---\ntheme: midnight\n---\n\n---\nlayout: code\n---\n```rust\nfn main() {}\n```\n",
+            "---\ntheme: default\n---\n\n---\nlayout: code\n---\n```rust\nfn main() {}\n```\n",
         );
         assert!(html.contains("syn-")); // class-based tokens, theme-coloured
         assert!(html.contains("<pre>"));
@@ -667,7 +742,7 @@ mod tests {
 
     #[test]
     fn table_layout_and_emphasis() {
-        let html = build("---\ntheme: midnight\n---\n\n---\nlayout: table\nhighlight-col: 2\nrow-headers: true\n---\n# T\n\n| a | b |\n| - | - |\n| 1 | 2 |\n");
+        let html = build("---\ntheme: default\n---\n\n---\nlayout: table\nhighlight-col: 2\nrow-headers: true\n---\n# T\n\n| a | b |\n| - | - |\n| 1 | 2 |\n");
         assert!(html.contains("layout-table"));
         assert!(html.contains("hl-col-2"));
         assert!(html.contains("row-headers"));

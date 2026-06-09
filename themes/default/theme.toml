@@ -1,0 +1,62 @@
+name = "default"
+
+# `default` is the built-in baseline, compiled into the binary. It defines the
+# engine's layout vocabulary as data (below); its look lives in `theme.css` and
+# the engine machinery in `base.css`, both alongside this file. Every other theme
+# inherits all of it and overrides only what it names.
+#
+# Most layouts are a single editable `body` block (loose Markdown flows into it);
+# multi-block layouts list each block. A block is editable unless a theme gives
+# it `image`/`text`. `at` = "x{c1} y{r1} x{c2} y{r2}", 1-indexed inclusive cells.
+# (`free` is intentionally absent — its blocks are author-placed via `:::block at=`.)
+
+[layout.title.blocks]
+body = { at = "x4 y6 x28 y13" }
+
+[layout.section.blocks]
+body = { at = "x4 y7 x29 y12" }
+
+[layout.bullets.blocks]
+body = { at = "x4 y3 x29 y16" }
+
+[layout.statement.blocks]
+body = { at = "x5 y5 x28 y14" }
+
+[layout.code.blocks]
+body = { at = "x4 y3 x29 y16" }
+
+[layout.table.blocks]
+body = { at = "x3 y3 x30 y16" }
+
+[layout.quote.blocks]
+body = { at = "x5 y5 x28 y12" }
+cite = { at = "x5 y13 x28 y15" }
+
+[layout.two-col.blocks]
+head  = { at = "x4 y3 x29 y5" }
+left  = { at = "x4 y7 x15 y16" }
+right = { at = "x18 y7 x29 y16" }
+
+[layout.compare.blocks]
+head  = { at = "x4 y3 x29 y5" }
+left  = { at = "x4 y7 x15 y16" }
+right = { at = "x18 y7 x29 y16" }
+
+# media-split: a cover image one side (full-bleed), text the other. `media: right`
+# mirrors the columns at render time.
+[layout.media-split.blocks]
+media = { at = "x1 y1 x16 y18", fit = "cover" }
+body  = { at = "x19 y4 x30 y15" }
+
+# stat: a heading and a repeatable figure that flows right, centred so partial
+# counts sit in the middle.
+[layout.stat.blocks]
+head   = { at = "x4 y3 x29 y5" }
+figure = { at = "x4 y7 x9 y13", repeatable = true, repeatable-direction = "right", repeatable-margin = 1, repeatable-limit = 4, repeatable-align = "center" }
+
+# image / raw fill the whole stage and render outside the grid.
+[layout.image.blocks]
+body = { at = "x1 y1 x32 y18", fit = "cover" }
+
+[layout.raw.blocks]
+body = { at = "x1 y1 x32 y18" }

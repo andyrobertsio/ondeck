@@ -6,14 +6,14 @@
   if (!slides.length) return;
   var stage = document.querySelector(".stage");
 
-  // Scale one slide's slot content down uniformly until it fits its grid cell.
+  // Scale one slide's block content down uniformly until it fits its grid cell.
   function fitSlide(slide) {
     slide.querySelectorAll(".fit").forEach(function (el) {
       el.style.transform = "";
-      var slot = el.parentElement;
+      var block = el.parentElement;
       var w = el.scrollWidth, h = el.scrollHeight;
       if (!w || !h) return; // display:none slides measure 0 — skip
-      var k = Math.min(1, slot.clientWidth / w, slot.clientHeight / h);
+      var k = Math.min(1, block.clientWidth / w, block.clientHeight / h);
       if (k < 1) el.style.transform = "scale(" + k + ")";
     });
   }

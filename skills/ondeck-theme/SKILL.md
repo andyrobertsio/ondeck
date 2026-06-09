@@ -24,9 +24,9 @@ layouts, so a theme can be as small as a name plus a few tokens — you override
 only what you want to change.
 
 **Read `THEMING.md` (top level of the repo) for the complete reference** — every
-token, layout selector, slot name, syntax-token class, and chrome/fragment hook
-you can target. Don't reverse-engineer it from `base.css`; `THEMING.md` is the
-source of truth. `themes/paper` (light) and `themes/bold` (high-contrast) are
+token, the block model, templates, layout/block selectors, syntax-token class,
+and chrome/fragment hook you can target. Don't reverse-engineer it from
+`base.css`; `THEMING.md` is the source of truth. `themes/paper` (light) and `themes/bold` (high-contrast) are
 worked examples to copy from.
 
 ## Tokens (theme.toml)
@@ -74,22 +74,32 @@ cols = 32
 rows = 18
 ```
 
-### Overriding layouts (optional)
+### Templates & layout blocks (optional)
 
-Layout slot rectangles are inherited; override one by name with `at`-style
-rects (`x{c1} y{r1} x{c2} y{r2}`, inclusive cells):
+Layouts are made of **blocks** (the placed-region primitive); their rects are
+inherited. Override a layout's block by name (`at` = `x{c1} y{r1} x{c2} y{r2}`,
+inclusive cells). Fixed **furniture** (logo/watermark) lives in a `[template.*]`
+that layouts inherit (one can be `default = true`):
 
 ```toml
-[layout.bullets]
-body = "x4 y3 x28 y16"
+[template.brand]
+default = true
+[template.brand.blocks]
+logo = { at = "x27 y1 x31 y3", image = "url('logo.svg')" }   # inlined; layer="behind" for a watermark
+
+[layout.bullets.blocks]
+body = { at = "x4 y3 x28 y16" }
 ```
+
+See **Blocks & templates** in `THEMING.md` for the full block property set.
 
 ## theme.css (optional overrides)
 
 Anything you can't express with tokens goes here, layered over the base
-stylesheet. The vocabulary is engine-stable: `.slide`, `.slide-content`, `.slot`
-/ `.slot-<name>`, `.layout-<name>`, and the code token classes `pre .syn-*`. See
-`THEMING.md` for the full list of selectors per layout.
+stylesheet. The vocabulary is engine-stable: `.slide`, `.slide-content`,
+`.block` / `.block-<name>`, `.layout-<name>`, `.template-<name>`, and the code
+token classes `pre .syn-*`. See `THEMING.md` for the full list of selectors per
+layout.
 
 ```css
 /* round bullet markers instead of squares */

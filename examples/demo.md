@@ -1,5 +1,5 @@
 ---
-theme: midnight
+theme: default
 title: Q3 Review
 slide-transition: slide
 slide-numbers: true
@@ -30,16 +30,23 @@ layout: bullets
 ---
 layout: stat
 ---
+:::head
 # By the numbers
+:::
+:::figure
+**142%**
 
-:::stat
-142% · of revenue target
+of revenue target
 :::
-:::stat
-+18 · NPS points
+:::figure
+**+18**
+
+NPS points
 :::
-:::stat
-40% · faster p95
+:::figure
+**40%**
+
+faster p95
 :::
 
 ---
@@ -59,13 +66,13 @@ background: "linear-gradient(135deg, var(--bg-2), var(--bg))"
 ---
 :::block at="x2 y2 x14 y8"
 # Top-left
-Placed by coordinates on the 30×20 grid.
+Placed by coordinates on the 32×18 grid.
 :::
 :::block at="x16 y4 x29 y10"
 ## Right block
 A second region — `x16 y4 x29 y10`.
 :::
-:::block at="x6 y13 x25 y19"
+:::block at="x6 y13 x25 y17"
 ### Centered-ish footer block
 This is the escape hatch: explicit placement when a slide needs it.
 :::
@@ -96,7 +103,9 @@ layout: bullets
 ---
 layout: compare
 ---
+:::head
 # Before vs after
+:::
 :::left
 ### Before
 - 3 services to deploy
@@ -116,24 +125,31 @@ layout: code
 # The whole deploy
 
 ```bash
-ondeck build deck.md --pdf out.pdf
-rsync -a out.pdf release@host:/srv/decks/
+ondeck build deck.md --pdf
+rsync -a deck.pdf release@host:/srv/decks/
 echo "shipped $(git rev-parse --short HEAD)"
 ```
 
 ---
-layout: stat-3
+layout: stat
 ---
+:::head
 # Reliability, in three numbers
+:::
+:::figure
+**99.98%**
 
-:::stat
-99.98% · uptime
+uptime
 :::
-:::stat
-0 · paging incidents
+:::figure
+**0**
+
+paging incidents
 :::
-:::stat
-12m · mean time to deploy
+:::figure
+**12m**
+
+mean time to deploy
 :::
 
 ---
@@ -154,14 +170,12 @@ fit: full
 ---
 ![Quarterly growth](chart.svg)
 
-:::caption
-Revenue, last five quarters.
-:::
-
 ---
 layout: quote
 ---
+:::body
 The best way to predict the future is to invent it.
+:::
 :::cite
 Alan Kay
 :::
@@ -169,10 +183,11 @@ Alan Kay
 ---
 layout: media-split
 ---
+:::body
 # Built for the field
 
 Crews see the next job, the route, and the parts list — before they leave the depot.
-
+:::
 :::media
 ![Depot](chart.svg)
 :::
@@ -181,10 +196,11 @@ Crews see the next job, the route, and the parts list — before they leave the 
 layout: media-split
 media: right
 ---
+:::body
 # And on the right
 
 Same layout, `media: right` — the image mirrors to the other side.
-
+:::
 :::media
 ![Depot](chart.svg)
 :::

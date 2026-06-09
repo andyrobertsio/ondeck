@@ -78,7 +78,7 @@ pub struct Built {
     pub theme: String,
 }
 
-/// Build a deck's HTML. Theme precedence: override → frontmatter → "midnight".
+/// Build a deck's HTML. Theme precedence: override → frontmatter → "default".
 pub fn build_html(
     input: &Path,
     theme_override: Option<&str>,
@@ -91,7 +91,7 @@ pub fn build_html(
     let theme_spec = theme_override
         .map(|s| s.to_string())
         .or_else(|| doc.frontmatter.get("theme").cloned())
-        .unwrap_or_else(|| "midnight".to_string());
+        .unwrap_or_else(|| "default".to_string());
     let theme = Theme::load(&theme_spec)?;
 
     let asset_base = input.parent().unwrap_or_else(|| Path::new("."));

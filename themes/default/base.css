@@ -1,0 +1,212 @@
+/* base.css — the engine MACHINERY, emitted before every theme. Structural only:
+   the fixed-aspect stage, the slide, the cols×rows grid, the `.block` primitive
+   (positioning + layer/align/fit mechanics), transitions, fragments, chrome
+   placement, and print/shot. The *look* (palette, typography, per-layout
+   styling) lives in this theme's `theme.css`, which every theme also inherits.
+
+   Sizing uses container-query units (cqmin/cqw/cqh) resolved against the slide
+   (a fixed-aspect container), so everything scales with the stage — the
+   on-screen view is the design, just scaled to fit, with letterbox bars. */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--frame);
+  color: var(--fg);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.45;
+}
+
+/* The deck fills the viewport and centres the stage (letterbox bars = --frame). */
+.deck {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--frame);
+}
+
+/* The fixed-aspect stage: as large as fits while preserving the design aspect. */
+.stage {
+  position: relative;
+  aspect-ratio: var(--stage-w) / var(--stage-h);
+  width: min(100%, calc(100dvh * var(--stage-w) / var(--stage-h)));
+  max-height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  container-type: size; /* chrome sizes against the stage */
+}
+
+/* --- Slide stage ------------------------------------------------------- */
+.slide {
+  position: absolute;
+  inset: 0;
+  display: none;
+  overflow: hidden;
+  background-color: var(--bg);
+  background-size: cover;
+  background-position: center;
+  container-type: size; /* block content + type size against the slide */
+  transition:
+    opacity var(--fx-dur) var(--fx-ease),
+    transform var(--fx-dur) var(--fx-ease);
+}
+.slide.active { display: block; opacity: 1; transform: none; z-index: 1; }
+/* Outgoing sits ABOVE the incoming during a transition, so a `fade` dissolves
+   the old slide away over the (opaque) new one — no stage/frame flash through. */
+.slide.leaving { display: block; z-index: 2; }
+.slide.notrans { transition: none !important; } /* set initial states w/o animating */
+
+/* Transition states (set by the runtime). Declared after .active/.leaving so
+   they win the equal-specificity tie until the runtime removes them. */
+.slide.from-fade  { opacity: 0; }
+.slide.from-right { transform: translateX(100%); }
+.slide.from-left  { transform: translateX(-100%); }
+.slide.to-fade    { opacity: 0; }
+.slide.to-left    { transform: translateX(-100%); }
+.slide.to-right   { transform: translateX(100%); }
+
+.slide-overlay { position: absolute; inset: 0; z-index: 0; }
+
+/* The universal grid substrate (cols×rows from the theme). Fills the slide;
+   margins come from the block rects, not slide padding. */
+.slide-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 32), 1fr);
+  grid-template-rows: repeat(var(--rows, 18), 1fr);
+}
+
+/* --- The block: a positioned grid item + its scale-to-fit inner wrapper. --
+   A block is fixed (theme-filled image/text) or editable (author-filled); both
+   are positioned the same way. The `.fit` wrapper holds `fit:scale` content. */
+.block {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;   /* align-y: center (main axis = vertical) */
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.block .fit { transform-origin: center center; width: 100%; }
+
+/* Layer (z-stack within .slide-content): behind → main → front. */
+.block.layer-behind { z-index: 0; }
+.block.layer-front  { z-index: 5; }
+
+/* Alignment: align-y on the main (vertical) axis, align-x on the cross axis
+   plus text-align. Center is the default and emits no class. */
+.block.ay-start { justify-content: flex-start; }
+.block.ay-end   { justify-content: flex-end; }
+.block.ax-start { align-items: flex-start; text-align: left; }
+.block.ax-end   { align-items: flex-end; text-align: right; }
+
+/* Fit modes for media content (an `<img>` from Markdown). `scale` uses `.fit`. */
+.block.fit-cover img, .block.fit-contain img { width: 100%; height: 100%; display: block; }
+.block.fit-cover img { object-fit: cover; }
+.block.fit-contain img { object-fit: contain; }
+.block.fit-cover p, .block.fit-contain p { margin: 0; height: 100%; }
+
+/* --- image / raw: render outside the grid (full-bleed) ----------------- */
+.layout-image .slide-content { display: block; }
+.layout-image .block-body { position: absolute; inset: 0; }
+.layout-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.layout-image .block-body p { height: 100%; margin: 0; }
+.layout-image.fit-contain img { object-fit: contain; }
+.layout-raw .slide-content { display: block; }
+
+/* --- deck chrome (slide numbers, progress, footer) — colours via tokens - */
+.deck-number, .deck-footer {
+  position: absolute;
+  bottom: 2.5cqmin;
+  z-index: 20;
+  font-size: 1.5cqmin;
+  color: var(--muted);
+  font-family: var(--font);
+}
+.deck-number { right: 3cqmin; }
+.deck-footer { left: 3cqmin; }
+.deck-progress {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 0.4cqmin;
+  z-index: 20;
+  background: var(--rule);
+}
+.deck-progress > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width var(--fx-dur) var(--fx-ease); }
+
+/* --- fragments (incremental reveal) ----------------------------------- */
+.fragment {
+  opacity: 0;
+  transition:
+    opacity var(--fx-dur) var(--fx-ease),
+    transform var(--fx-dur) var(--fx-ease),
+    filter var(--fx-dur) var(--fx-ease);
+}
+
+/* Each transition defines only the hidden "from" state. */
+.fragment.fx-fade {}
+.fragment.fx-fade-up    { transform: translateY(1.2em); }
+.fragment.fx-fade-down  { transform: translateY(-1.2em); }
+.fragment.fx-fade-left  { transform: translateX(1.2em); }
+.fragment.fx-fade-right { transform: translateX(-1.2em); }
+.fragment.fx-zoom       { transform: scale(0.85); }
+.fragment.fx-zoom-out   { transform: scale(1.15); }
+.fragment.fx-blur       { filter: blur(10px); }
+.fragment.fx-rise       { transform: translateY(1.2em) scale(0.97); }
+.fragment.fx-none       { transition: none; }
+
+/* Revealed must come AFTER the fx recipes (equal specificity → source order). */
+.fragment.revealed { opacity: 1; transform: none; filter: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fragment { transition-duration: 0.001s; transform: none; filter: none; }
+}
+
+/* --- print / PDF ------------------------------------------------------- */
+@page { size: 1920px 1080px; margin: 0; }
+body.print .deck { display: block; height: auto; overflow: visible; }
+body.print .stage {
+  position: static;
+  width: auto;
+  height: auto;
+  max-height: none;
+  aspect-ratio: auto;
+  overflow: visible;
+  container-type: normal;
+}
+body.print .slide {
+  position: relative;
+  inset: auto;
+  display: block;
+  width: 1920px;
+  height: 1080px;
+  container-type: size;
+  break-after: page;
+  page-break-after: always;
+}
+.notes { display: none; }
+/* Chrome is a screen affordance; single elements can't paginate, so hide it. */
+body.print .deck-number,
+body.print .deck-footer,
+body.print .deck-progress { display: none; }
+
+/* Shot mode (?shot=N): like print, but show only the one targeted slide,
+   used to capture a PNG per slide for PPTX export. */
+body.shot .slide { display: none !important; }
+body.shot .slide.shot-active { display: block !important; }
+
+/* Print/PDF: every fragment jumps to its final state, no motion. */
+body.print .fragment {
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  transition: none !important;
+}

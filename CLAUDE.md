@@ -4,9 +4,11 @@
 slide decks, with PDF and PPTX export. Architecture & format live in
 [SPEC.md](SPEC.md); user docs in [README.md](README.md); the complete theming
 vocabulary is in [THEMING.md](THEMING.md). Keep these up to date when behaviour
-changes — in particular, **`THEMING.md` must track `src/assets/base.css`**: if you
-add/rename a token, layout class, slot, `syn-*` token, or chrome/fragment hook,
-update THEMING.md (and the theming skills reference it, so don't duplicate it).
+changes — in particular, **`THEMING.md` must track `themes/default/`** (`base.css`
+machinery + `theme.css` look + `theme.toml` layout vocabulary): if you add/rename
+a token, layout/template class, `block`/`block-*` hook, `syn-*` token, a default
+layout's blocks, or a chrome/fragment hook, update THEMING.md (and the theming
+skills reference it, so don't duplicate it).
 
 ## Before committing (always)
 
@@ -56,16 +58,24 @@ use it as the smoke test / reference deck.
 - **The tool assembles; the browser renders.** We emit HTML + CSS; layout happens
   in the browser. PDF/PPTX drive headless Chrome over that same HTML — never
   reimplement layout for an export target.
-- **Themes restyle one stable vocabulary.** Layouts are data (grid-slot rects),
-  default styling lives in `src/assets/base.css`; themes override via tokens +
-  CSS. Add a layout as data + CSS, not a new code path where avoidable.
+- **Themes restyle one stable vocabulary.** The `default` theme is the baseline
+  every theme inherits: `themes/default/base.css` (engine machinery),
+  `theme.css` (default look), `theme.toml` (layouts/blocks as data). Layouts and
+  templates are data (named **blocks** = grid rects + hints); themes override via
+  tokens + CSS. A block is *fixed* (theme `image`/`text`) or *editable*
+  (author-filled). Add a layout/template as data + CSS, not a new code path where
+  avoidable.
 - **Keep dependencies light.** Don't add crates without good reason.
 - **Output stays self-contained** (images/fonts inlined). Don't introduce remote
   runtime dependencies in generated decks.
 
 ## Where things are
 
-`src/parser.rs` (Markdown→slides) · `render.rs` (slides→HTML) · `theme.rs`
-(themes + inheritance) · `grid.rs` (rects, `at=`) · `fragments.rs` ·
+`src/parser.rs` (Markdown→slides) · `render.rs` (slides→HTML, block rendering) ·
+`theme.rs` (themes/templates/blocks + inheritance) · `grid.rs` (rects, `at=`,
+repeat math) · `fragments.rs` ·
 `assets.rs` (data-URI inlining) · `pdf.rs` · `pptx.rs` · `watch.rs` ·
-`assets/base.css` + `assets/runtime.js` (engine vocabulary) · `themes/` (embedded).
+`assets/runtime.js` (deck runtime — engine plumbing, not themeable) · `themes/`
+(bundled themes). The `default` theme — `themes/default/{base.css, theme.css,
+theme.toml}` — is the engine baseline (machinery + look + layout data), compiled
+in via `include_str!` and inherited by every theme.
