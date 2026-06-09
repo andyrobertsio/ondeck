@@ -33,7 +33,22 @@ ondeck watch <input.md> [--theme ...] [--port 7321] [--no-open]
   live-reload server: rebuilds on change (mtime polling), browser auto-reloads;
   if the port is already in use (incl. a service that bind alone can't detect,
   e.g. macOS AirPlay on 7000), falls back to the next free port
+ondeck present <input.md | input.html> [--theme ...] [--port 7321] [--no-open]
+  like watch, but opens two synced windows — audience + presenter dashboard
+  (?present=1); accepts a Markdown source (built + watched) or a prebuilt .html
 ```
+
+## Presenter view
+
+`:::notes` content (hidden per-slide) powers a two-window presenter experience:
+an audience window (the normal deck) and a **presenter** window
+(`?present=1`) showing the current slide, a next-slide preview, the slide's
+notes, an elapsed timer, and a wall clock. Navigation in either window drives
+both. Sync transport: **`window.open` + `postMessage`** when the deck opens its
+own presenter window (works from `file://`, e.g. pressing **`P`**), plus
+**`BroadcastChannel`** when served over http (used by `ondeck present`). **`F`**
+toggles fullscreen. It's all client-side JS in the self-contained output — the
+deck can present itself from a bare file; `present` is the http convenience.
 
 ## Source format
 
@@ -357,6 +372,9 @@ Remote assets (e.g. a Google Fonts `@import`) are not fetched.
 - Deck chrome (frontmatter toggles): `slide-numbers`, `progress`, `footer`.
 - Three reference themes: `default`, `paper`, `bold`.
 - `ondeck watch` (live-reload server) + `ondeck build --open`.
+- **Presenter view**: two-window audience + notes/preview dashboard, synced via
+  `postMessage`/`BroadcastChannel`; `P` opens it, `F` fullscreen; `ondeck present`
+  serves both windows over http (Markdown or prebuilt `.html`).
 - Test suite (`cargo test`): parser, grid, fragments, theme, render (36 tests).
 - `free` layout + `at="…"` coordinate escape hatch (any slot may override).
 - Code highlighting at build via syntect, emitted as **theme-coloured CSS
@@ -382,5 +400,4 @@ Remote assets (e.g. a Google Fonts `@import`) are not fetched.
   Chrome launch per slide, so large decks are slow.
 
 **Not yet built:** remote asset fetching (a Google Fonts `@import` isn't
-inlined — self-host instead); presenter view (notes are embedded but unused);
-the authoring skill.
+inlined — self-host instead).

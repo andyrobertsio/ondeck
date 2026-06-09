@@ -69,6 +69,23 @@ enum Command {
         #[arg(long)]
         no_open: bool,
     },
+    /// Present a deck: opens a synced audience + presenter (notes) two-window view.
+    Present {
+        /// Markdown source (built + watched) or a prebuilt .html (served as-is).
+        input: PathBuf,
+        /// Theme override (Markdown input only; else the deck's `theme:`).
+        #[arg(short, long)]
+        theme: Option<String>,
+        /// Don't inline local images as data URIs (Markdown input only).
+        #[arg(long)]
+        no_inline: bool,
+        /// Port to serve on (falls back to the next free port if busy).
+        #[arg(short, long, default_value_t = 7321)]
+        port: u16,
+        /// Don't open browser windows automatically.
+        #[arg(long)]
+        no_open: bool,
+    },
 }
 
 /// The result of building a deck: HTML, slide count, and resolved theme name.
@@ -160,6 +177,13 @@ fn run() -> Result<(), String> {
             port,
             no_open,
         } => watch::serve(input, theme, !no_inline, port, !no_open),
+        Command::Present {
+            input,
+            theme,
+            no_inline,
+            port,
+            no_open,
+        } => watch::present(input, theme, !no_inline, port, !no_open),
     }
 }
 
