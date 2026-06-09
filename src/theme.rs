@@ -235,8 +235,8 @@ struct GridCfg {
 
 impl Default for GridCfg {
     fn default() -> Self {
-        // 32×18 over a 16:9 stage → square cells.
-        GridCfg { cols: 32, rows: 18 }
+        // 64×36 over a 16:9 stage → 30×30px square cells (64:36 == 16:9).
+        GridCfg { cols: 64, rows: 36 }
     }
 }
 
@@ -509,7 +509,7 @@ mod tests {
     fn builtin_default_inherits_defaults() {
         let t = Theme::load("default").unwrap();
         assert_eq!(t.name, "default");
-        assert_eq!((t.cols, t.rows), (32, 18));
+        assert_eq!((t.cols, t.rows), (64, 36));
         assert_eq!(t.default_transition, "fade");
         for l in ["title", "bullets", "stat", "media-split", "quote"] {
             assert!(t.layouts.contains_key(l), "missing layout {l}");

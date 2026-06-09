@@ -7,56 +7,57 @@ name = "default"
 #
 # Most layouts are a single editable `body` block (loose Markdown flows into it);
 # multi-block layouts list each block. A block is editable unless a theme gives
-# it `image`/`text`. `at` = "x{c1} y{r1} x{c2} y{r2}", 1-indexed inclusive cells.
+# it `image`/`text`. `at` = "x{c1} y{r1} x{c2} y{r2}", 1-indexed inclusive cells
+# on the 64×36 grid (30×30px square cells over the 16:9 stage).
 # (`free` is intentionally absent — its blocks are author-placed via `:::block at=`.)
 
 [layout.title.blocks]
-body = { at = "x4 y6 x28 y13" }
+body = { at = "x7 y11 x56 y26" }
 
 [layout.section.blocks]
-body = { at = "x4 y7 x29 y12" }
+body = { at = "x7 y13 x58 y24" }
 
 [layout.bullets.blocks]
-body = { at = "x4 y3 x29 y16" }
+body = { at = "x7 y5 x58 y32" }
 
 [layout.statement.blocks]
-body = { at = "x5 y5 x28 y14" }
+body = { at = "x9 y9 x56 y28" }
 
 [layout.code.blocks]
-body = { at = "x4 y3 x29 y16" }
+body = { at = "x7 y5 x58 y32" }
 
 [layout.table.blocks]
-body = { at = "x3 y3 x30 y16" }
+body = { at = "x5 y5 x60 y32" }
 
 [layout.quote.blocks]
-body = { at = "x5 y5 x28 y12" }
-cite = { at = "x5 y13 x28 y15" }
+body = { at = "x9 y9 x56 y24" }
+cite = { at = "x9 y25 x56 y30" }
 
 [layout.two-col.blocks]
-head  = { at = "x4 y3 x29 y5" }
-left  = { at = "x4 y7 x15 y16" }
-right = { at = "x18 y7 x29 y16" }
+head  = { at = "x7 y5 x58 y10" }
+left  = { at = "x7 y13 x30 y32" }
+right = { at = "x35 y13 x58 y32" }
 
 [layout.compare.blocks]
-head  = { at = "x4 y3 x29 y5" }
-left  = { at = "x4 y7 x15 y16" }
-right = { at = "x18 y7 x29 y16" }
+head  = { at = "x7 y5 x58 y10" }
+left  = { at = "x7 y13 x30 y32" }
+right = { at = "x35 y13 x58 y32" }
 
 # media-split: a cover image one side (full-bleed), text the other. `media: right`
 # mirrors the columns at render time.
 [layout.media-split.blocks]
-media = { at = "x1 y1 x16 y18", fit = "cover" }
-body  = { at = "x19 y4 x30 y15" }
+media = { at = "x1 y1 x32 y36", fit = "cover" }
+body  = { at = "x37 y7 x60 y30" }
 
 # stat: a heading and a repeatable figure that flows right, centred so partial
 # counts sit in the middle.
 [layout.stat.blocks]
-head   = { at = "x4 y3 x29 y5" }
-figure = { at = "x4 y7 x9 y13", repeatable = true, repeatable-direction = "right", repeatable-margin = 1, repeatable-limit = 4, repeatable-align = "center" }
+head   = { at = "x7 y5 x58 y10" }
+figure = { at = "x7 y13 x18 y26", repeatable = true, repeatable-direction = "right", repeatable-margin = 2, repeatable-limit = 4, repeatable-align = "center" }
 
 # image / raw fill the whole stage and render outside the grid.
 [layout.image.blocks]
-body = { at = "x1 y1 x32 y18", fit = "cover" }
+body = { at = "x1 y1 x64 y36", fit = "cover" }
 
 [layout.raw.blocks]
-body = { at = "x1 y1 x32 y18" }
+body = { at = "x1 y1 x64 y36" }

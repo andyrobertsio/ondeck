@@ -132,7 +132,7 @@ runs as a JS safety net.
 
 ## Grid & layout engine
 
-Every slide is a **32×18 CSS grid** — square cells on a 16:9 stage. (Keep
+Every slide is a **64×36 CSS grid** — square cells on a 16:9 stage. (Keep
 `cols:rows == aspect` for square cells; both are theme-overridable.) A *layout* is
 **data, not code**: a set of named blocks, each a grid rectangle plus styling
 hints (layer, fit, alignment, repeat), inherited from the engine defaults and
@@ -146,7 +146,7 @@ deck's `default` one) and renders its furniture *plus* the layout's own blocks.
 
 ```css
 .slide-content { display:grid;
-  grid-template-columns:repeat(32,1fr); grid-template-rows:repeat(18,1fr); }
+  grid-template-columns:repeat(64,1fr); grid-template-rows:repeat(36,1fr); }
 .block { grid-column: 4 / 29; grid-row: 6 / 14; }   /* a block's rectangle */
 ```
 
@@ -160,8 +160,8 @@ the default authoring surface — the deck author picks a `layout` and fills slo
 But for a bespoke slide:
 
 - `layout: free` — no predefined blocks; the author places every block explicitly.
-- `:::block at="x2 y5 x8 y6"` — place a block from cell (col 2,row 5) to
-  (col 8,row 6), inclusive, on the 32×18 grid.
+- `:::block at="x3 y9 x16 y12"` — place a block from cell (col 3,row 9) to
+  (col 16,row 12), inclusive, on the 64×36 grid.
 
 **Overflow policy: scale-to-fit with a clip backstop.** A block's `fit:scale`
 content is uniformly transform-scaled down until it fits its cell (works
@@ -284,19 +284,19 @@ themes/<name>/
 # theme.toml
 name = "default"
 [grid]
-cols = 30
-rows = 20
+cols = 64
+rows = 36
 [tokens]                      # emitted as :root CSS vars (--bg, --accent, …)
 bg = "#0d1017"
 accent = "#7aa2f7"
 [template.brand]              # named furniture; one may be the deck-wide default
 default = true
 [template.brand.blocks]
-logo = { at = "x26 y2 x28 y3", image = "url('logo.svg')" }   # fixed (inlined)
+logo = { at = "x51 y3 x56 y6", image = "url('logo.svg')" }   # fixed (inlined)
 [layout.two-col.blocks]       # a layout's blocks; `at` is "x{c1} y{r1} x{c2} y{r2}"
-head  = { at = "x3 y3 x28 y6" }
-left  = { at = "x3 y8 x15 y18" }
-right = { at = "x16 y8 x28 y18" }
+head  = { at = "x5 y5 x56 y12" }
+left  = { at = "x5 y15 x30 y36" }
+right = { at = "x31 y15 x56 y36" }
 ```
 
 The grid vocabulary (`.slide` / `.slide-content` / `.block` / `.block-<name>`,
@@ -368,7 +368,7 @@ Remote assets (e.g. a Google Fonts `@import`) are not fetched.
 - **Templates** (theme furniture) + **blocks** (the unified placed-region
   primitive): fixed vs editable by content, single-sink authoring, repeatables.
 - Fixed-aspect **stage** (1920×1080 / 16:9 default) with letterbox; pure-CSS
-  container-unit scaling; square 32×18 grid; theme-overridable aspect/size.
+  container-unit scaling; square 64×36 grid; theme-overridable aspect/size.
 - Deck chrome (frontmatter toggles): `slide-numbers`, `progress`, `footer`.
 - Three reference themes: `default`, `paper`, `bold`.
 - `ondeck watch` (live-reload server) + `ondeck build --open`.

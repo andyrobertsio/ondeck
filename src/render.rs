@@ -708,12 +708,13 @@ mod tests {
         let html = build(
             "---\ntheme: default\n---\n\n---\nlayout: media-split\nmedia: right\n---\n:::media\n![](x.png)\n:::\n:::body\n# H\nText\n:::\n",
         );
+        // 64-col grid: media (cols 1/33) mirrors to 33/65; body (37/61) to 5/29.
         assert!(
-            html.contains("grid-column:17/33"),
+            html.contains("grid-column:33/65"),
             "media should mirror to the right"
         );
         assert!(
-            html.contains("grid-column:3/15"),
+            html.contains("grid-column:5/29"),
             "body should mirror to the left"
         );
     }

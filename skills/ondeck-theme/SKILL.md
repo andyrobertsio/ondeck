@@ -65,13 +65,13 @@ font = '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
 
 ### Grid
 
-The grid defaults to 32×18 (square cells on the 16:9 stage). If you change it,
+The grid defaults to 64×36 (square cells on the 16:9 stage). If you change it,
 keep `cols:rows == 16:9` for square cells:
 
 ```toml
 [grid]
-cols = 32
-rows = 18
+cols = 64
+rows = 36
 ```
 
 ### Templates & layout blocks (optional)
@@ -85,10 +85,10 @@ that layouts inherit (one can be `default = true`):
 [template.brand]
 default = true
 [template.brand.blocks]
-logo = { at = "x27 y1 x31 y3", image = "url('logo.svg')" }   # inlined; layer="behind" for a watermark
+logo = { at = "x53 y1 x62 y6", image = "url('logo.svg')" }   # inlined; layer="behind" for a watermark
 
 [layout.bullets.blocks]
-body = { at = "x4 y3 x28 y16" }
+body = { at = "x7 y5 x56 y32" }
 ```
 
 See **Blocks & templates** in `THEMING.md` for the full block property set.
