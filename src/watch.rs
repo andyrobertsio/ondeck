@@ -3,7 +3,7 @@
 //! no websockets — mtime polling for rebuilds, a `/__version` poll for reload.
 
 use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -84,6 +84,28 @@ fn handle(mut stream: TcpStream, state: &Arc<Mutex<State>>) {
     let _ = stream.write_all(body.as_bytes());
 }
 
+/// Find a usable port starting at `start`. A plain `bind` isn't enough: on macOS
+/// the AirPlay Receiver (ControlCenter) holds the wildcard `*:7000`, and our
+/// more-specific `127.0.0.1` bind succeeds *alongside* it — connections are then
+/// routed nondeterministically and you get its 403s. So we first probe with a
+/// connection: if anything already answers on the port (AirPlay, or a stray
+/// instance), skip it. Tries up to 20 ports.
+fn bind_available(start: u16) -> Result<(TcpListener, u16), String> {
+    for port in start..=start.saturating_add(20) {
+        let addr = SocketAddr::from(([127, 0, 0, 1], port));
+        if TcpStream::connect_timeout(&addr, Duration::from_millis(150)).is_ok() {
+            continue; // something is already listening here
+        }
+        if let Ok(listener) = TcpListener::bind(addr) {
+            return Ok((listener, port));
+        }
+    }
+    Err(format!(
+        "no free port found in {start}..={}",
+        start.saturating_add(20)
+    ))
+}
+
 pub fn serve(
     input: PathBuf,
     theme: Option<String>,
@@ -128,9 +150,11 @@ pub fn serve(
         });
     }
 
-    let listener = TcpListener::bind(("127.0.0.1", port))
-        .map_err(|e| format!("binding 127.0.0.1:{port}: {e}"))?;
-    let url = format!("http://127.0.0.1:{port}/");
+    let (listener, bound) = bind_available(port)?;
+    if bound != port {
+        eprintln!("Port {port} is in use; serving on {bound} instead.");
+    }
+    let url = format!("http://127.0.0.1:{bound}/");
     eprintln!("Serving {url} — watching for changes (Ctrl-C to stop)");
     if open {
         crate::open_in_browser(&url);

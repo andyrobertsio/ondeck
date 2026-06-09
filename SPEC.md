@@ -29,8 +29,10 @@ ondeck build <input.md> [-o out.html] [--theme <name|path>] [--no-inline] [--pdf
   --no-inline  don't embed local images as data URIs
   --open       open the built HTML in the default browser
   --theme      built-in name, directory, or name under ./themes/
-ondeck watch <input.md> [--theme ...] [--port 7000] [--no-open]
-  live-reload server: rebuilds on change (mtime polling), browser auto-reloads
+ondeck watch <input.md> [--theme ...] [--port 7321] [--no-open]
+  live-reload server: rebuilds on change (mtime polling), browser auto-reloads;
+  if the port is already in use (incl. a service that bind alone can't detect,
+  e.g. macOS AirPlay on 7000), falls back to the next free port
 ```
 
 ## Source format

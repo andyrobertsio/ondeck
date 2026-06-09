@@ -62,8 +62,8 @@ enum Command {
         /// Don't inline local images as data URIs.
         #[arg(long)]
         no_inline: bool,
-        /// Port to serve on.
-        #[arg(short, long, default_value_t = 7000)]
+        /// Port to serve on (falls back to the next free port if busy).
+        #[arg(short, long, default_value_t = 7321)]
         port: u16,
         /// Don't open a browser automatically.
         #[arg(long)]

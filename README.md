@@ -268,9 +268,13 @@ ondeck build <input.md> [options]
 ondeck watch <input.md> [options]
   -t, --theme <SPEC>    theme override
       --no-inline       don't embed images
-  -p, --port <PORT>     server port (default 7000)
+  -p, --port <PORT>     server port (default 7321; falls back if busy)
       --no-open         don't open a browser automatically
 ```
+
+> **macOS note:** ports 7000/5000 are held by the AirPlay Receiver (it answers
+> `403`). `watch` defaults to 7321 and auto-falls back to the next free port, so
+> this shouldn't bite — but if you force `-p 7000`, expect the conflict.
 
 ## Themes
 
