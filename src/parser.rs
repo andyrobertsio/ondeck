@@ -163,11 +163,11 @@ mod tests {
     #[test]
     fn deck_frontmatter_and_per_slide() {
         let doc = parse(
-            "---\ntheme: midnight\ntitle: T\n---\n\n---\nlayout: title\n---\n# Hi\n---\nlayout: bullets\n---\n- a\n",
+            "---\ntheme: default\ntitle: T\n---\n\n---\nlayout: title\n---\n# Hi\n---\nlayout: bullets\n---\n- a\n",
         );
         assert_eq!(
             doc.frontmatter.get("theme").map(String::as_str),
-            Some("midnight")
+            Some("default")
         );
         assert_eq!(doc.slides.len(), 2);
         assert_eq!(

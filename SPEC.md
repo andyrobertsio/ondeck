@@ -10,10 +10,10 @@ presentation, styled by a theme. It can also export to PDF.
    is "open the HTML in headless Chrome and print" — we never do PDF layout
    ourselves.
 2. **The layout vocabulary lives in the engine; themes only restyle it.** The
-   set of layout names and slot names is stable across every theme, so the
-   authoring skill teaches one vocabulary. A theme overrides CSS (and optionally
-   HTML structure), and may *add* bespoke layouts, but the core set is
-   guaranteed.
+   set of layout names and block names is stable across every theme, so the
+   authoring skill teaches one vocabulary. A theme overrides CSS, may *add*
+   bespoke layouts, and may own fixed furniture via **templates**, but the core
+   set is guaranteed.
 3. **Explicit over magic.** Layout is chosen explicitly (with inference only for
    the obvious). We never second-guess the author — e.g. we give contrast knobs
    but never auto-adjust colors.
@@ -41,7 +41,7 @@ separated by a line containing exactly `---`. A slide may begin with its own
 
 ```markdown
 ---
-theme: midnight
+theme: default
 title: Q3 Review
 ---
 
@@ -83,14 +83,22 @@ Speaker notes — embedded hidden, never rendered to the slide.
 - Caveat: a slide body must not *start* with a `word:` line (it would be read as
   frontmatter). Lead with a heading or blank line.
 
-### Slots
+### Blocks
 
-Multi-region layouts use fenced slot markers: `:::name` … `:::`. Content inside
-is Markdown. Single-slot layouts (`bullets`, `statement`, `section`) need no
-markers — the whole body is the implicit content.
+A **block** is the one placed-region primitive. Editable blocks are filled by the
+author with fenced markers: `:::name` … `:::` (content is Markdown).
 
-`::: notes` is a reserved slot: embedded hidden in the HTML (for a future
-presenter view), never shown on the slide.
+**Single-sink rule:** if a layout has exactly *one* editable block, loose
+(unslotted) Markdown fills it — so `bullets`, `statement`, `section`, `title`,
+`code`, `table`, `image` need no markers. A layout with two or more editable
+blocks (`two-col`, `compare`, `quote`, `media-split`, `stat`) requires every one
+to be addressed with `:::name`.
+
+A **repeatable** block is filled by writing its `:::name` block multiple times
+(e.g. `stat`'s `:::figure`); each entry renders a copy (see Grid & layout).
+
+`::: notes` is reserved: embedded hidden in the HTML (for a future presenter
+view), never shown on the slide. It is not a block.
 
 ## The stage
 
@@ -109,55 +117,65 @@ runs as a JS safety net.
 
 Every slide is a **32×18 CSS grid** — square cells on a 16:9 stage. (Keep
 `cols:rows == aspect` for square cells; both are theme-overridable.) A *layout* is
-**data, not code**: a table of named slots → grid rectangles, inherited from the
-engine defaults and overridable per theme. Margins come from the rects, not slide
-padding. Rendering one generic grid means adding a layout is data, not a new code
-path.
+**data, not code**: a set of named blocks, each a grid rectangle plus styling
+hints (layer, fit, alignment, repeat), inherited from the engine defaults and
+overridable per theme. Margins come from the rects, not slide padding. Rendering
+one generic grid means adding a layout is data, not a new code path.
+
+A block is **fixed** when the theme gives it content (`image`/`text`) and
+**editable** otherwise (the author fills it). A **template** is a named bundle of
+fixed furniture blocks (logo, watermark); a layout selects a template (or the
+deck's `default` one) and renders its furniture *plus* the layout's own blocks.
 
 ```css
 .slide-content { display:grid;
   grid-template-columns:repeat(32,1fr); grid-template-rows:repeat(18,1fr); }
-.slot { grid-column: 4 / 29; grid-row: 6 / 14; }   /* a slot's rectangle */
+.block { grid-column: 4 / 29; grid-row: 6 / 14; }   /* a block's rectangle */
 ```
+
+A **repeatable** block (e.g. `stat`'s `figure`) stamps one copy per authored
+entry, flowing from its anchor along `repeatable-direction` by (extent +
+`repeatable-margin`), capped at `repeatable-limit`, positioned within that track
+by `repeatable-align`.
 
 **Coordinate escape hatch.** Coordinates are a theme-author / power tool, *not*
 the default authoring surface — the deck author picks a `layout` and fills slots.
 But for a bespoke slide:
 
-- `layout: free` — no predefined slots; every block is placed explicitly.
+- `layout: free` — no predefined blocks; the author places every block explicitly.
 - `:::block at="x2 y5 x8 y6"` — place a block from cell (col 2,row 5) to
   (col 8,row 6), inclusive, on the 32×18 grid.
-- Any slot in *any* layout may carry `at="…"` to override its default rectangle
-  on a single slide.
 
-**Overflow policy: scale-to-fit with a clip backstop.** A slot's content is
-uniformly transform-scaled down until it fits its cell (works regardless of font
-unit); `overflow:hidden` clips only if it hits the floor. A fixed fine grid stays
-pleasant instead of brittle, and content is never silently destroyed. We do not
-auto-reflow or second-guess placement.
+**Overflow policy: scale-to-fit with a clip backstop.** A block's `fit:scale`
+content is uniformly transform-scaled down until it fits its cell (works
+regardless of font unit); `overflow:hidden` clips only if it hits the floor. A
+fixed fine grid stays pleasant instead of brittle, and content is never silently
+destroyed. We do not auto-reflow or second-guess placement.
 
 ## Layout vocabulary (core set)
 
-Layouts are defined as grid-slot rectangles (above). Slots:
+Layouts are defined as named blocks (above). Single-block layouts take loose
+Markdown (single-sink); multi-block layouts need `:::name` on each block.
 
-| Layout | Slots | Use |
+| Layout | Blocks | Use |
 |---|---|---|
-| `title` | (body: `#` title, `##` subtitle, rest meta) | Opening slide |
-| `section` | (body) | Section divider |
-| `bullets` *(default)* | (body) | The workhorse |
-| `two-col` | `left`, `right` (+ body heading) | Side by side |
-| `media-split` | `media` (cover image) + body; `media: right` | Image one side (full-bleed), text the other; `media: right` mirrors |
-| `statement` | (body) | Big centered idea |
-| `quote` | (body) + `:::cite` | Attributed pull-quote |
-| `stat` | repeatable `:::stat` (`value · label`) | Big-number slide(s) |
-| `stat-3` / `stat-4` | as `stat`, fixed count | Tuned N-column grids (presets over `stat`) |
-| `image` | body `![](src)` + optional `:::caption`; `fit: full\|contain` | Image *is* the content (full-bleed by default) |
-| `code` | (body: fenced code) | Code, highlighted at build (syntect) |
-| `table` | (body: Markdown table) | Themed table; `highlight-col`/`-row`/`row-headers` emphasis |
-| `compare` | `left`, `right` | A vs B |
-| `raw` | (body: raw HTML) | Escape hatch |
+| `title` | `body` (`#` title, `##` subtitle, rest meta) | Opening slide |
+| `section` | `body` | Section divider |
+| `bullets` *(default)* | `body` | The workhorse |
+| `two-col` | `head`, `left`, `right` | Side by side |
+| `media-split` | `media` (cover image, `fit:cover`), `body`; `media: right` mirrors | Image one side (full-bleed), text the other |
+| `statement` | `body` | Big centered idea |
+| `quote` | `body`, `cite` | Attributed pull-quote |
+| `stat` | `head`, `figure` (repeatable) | Big-number slide(s); the theme styles each figure's Markdown (`**value**` = the number) |
+| `image` | `body` (`![](src)`); `fit: full\|contain` | Image *is* the content (full-bleed) |
+| `code` | `body` (fenced code) | Code, highlighted at build (syntect) |
+| `table` | `body` (Markdown table) | Themed table; `highlight-col`/`-row`/`row-headers` emphasis |
+| `compare` | `head`, `left`, `right` | A vs B |
+| `raw` | `body` (raw HTML) | Escape hatch |
+| `free` | author-placed via `:::block at="…"` | Coordinate escape hatch |
 
-`stat-N` shares `stat`'s rendering path; the variants only differ in grid hints.
+`stat` replaces the former `stat`/`stat-3`/`stat-4` presets: the `figure` block
+is repeatable (`limit` 4, centred), so 2–4 figures Just Work.
 
 ## Per-slide frontmatter keys
 
@@ -236,50 +254,72 @@ without runtime changes.
 > code-token class, chrome/fragment hook): **[THEMING.md](THEMING.md)**. This
 > section is the architectural overview.
 
-A theme is a directory — **tokens + grid + layouts (TOML) and styling (CSS)**,
-not just a palette.
+A theme is a directory — **tokens + grid + templates + layouts (TOML) and styling
+(CSS)**, not just a palette.
 
 ```
 themes/<name>/
-  theme.toml      # tokens, grid size, layout slot rectangles
+  theme.toml      # tokens, grid size, templates (furniture), layout blocks
   theme.css       # styling, references the tokens as CSS variables
 ```
 
 ```toml
 # theme.toml
-name = "midnight"
+name = "default"
 [grid]
 cols = 30
 rows = 20
 [tokens]                      # emitted as :root CSS vars (--bg, --accent, …)
 bg = "#0d1017"
 accent = "#7aa2f7"
-[layout.two-col]              # layouts are grid-slot rects ("x{c1} y{r1} x{c2} y{r2}")
-head  = "x3 y3 x28 y6"
-left  = "x3 y8 x15 y18"
-right = "x16 y8 x28 y18"
+[template.brand]              # named furniture; one may be the deck-wide default
+default = true
+[template.brand.blocks]
+logo = { at = "x26 y2 x28 y3", image = "url('logo.svg')" }   # fixed (inlined)
+[layout.two-col.blocks]       # a layout's blocks; `at` is "x{c1} y{r1} x{c2} y{r2}"
+head  = { at = "x3 y3 x28 y6" }
+left  = { at = "x3 y8 x15 y18" }
+right = { at = "x16 y8 x28 y18" }
 ```
 
-The grid vocabulary (`.slide` / `.slide-content` / `.slot` / `.slot-<name>`) is
-engine-stable, so themes restyle one vocabulary. Slot names `body`/`head`
-receive the loose body; `stats` is the special repeatable-`:::stat` grid.
+The grid vocabulary (`.slide` / `.slide-content` / `.block` / `.block-<name>`,
+plus `.layout-<name>` / `.template-<name>` on the slide) is engine-stable, so
+themes restyle one vocabulary. A block is fixed when it has `image`/`text`, else
+editable; `repeatable = true` makes it a per-entry stamp.
 
-**Inheritance — a theme only writes overrides.** The engine ships:
-- `base.css` (embedded): default `:root` tokens, the grid vocabulary, and
-  token-driven default styling for every core layout.
-- Default layout rectangles for the core set.
+**Block properties:** `at` (required), `image`/`text` (content → fixed),
+`layer` (`front`|`behind`), `opacity`, `align-x`/`align-y`, `fit`
+(`scale`|`cover`|`contain`), `transition`, and `repeatable` + `repeatable-direction`/
+`-margin`/`-limit`/`-align`. A layout selects furniture via `template = "<name>"`
+or `template = "none"`; with neither, it inherits the deck's `default` template.
 
-A theme inherits all of it. The CSS cascade is `base.css` → theme `[tokens]`
-(override the `:root` defaults) → theme `theme.css` (overrides everything).
-Layouts start from the defaults; a theme's `[layout.*]` overrides one or adds a
-new one. `theme.css` is optional. So a minimal theme is `name = "…"` plus a few
-tokens. Reference themes: **`midnight`** (`name` only — pure inheritance),
+**Validation:** at most one `default` template; `at` required; a block can't be
+both fixed and `repeatable`; a layout can't name a template that doesn't exist;
+a block name can't appear in both a layout and its template.
+
+**Inheritance — a theme only writes overrides.** The baseline is the built-in
+**`default` theme** (`themes/default/`, compiled into the binary), which every
+theme inherits:
+- `base.css` — engine **machinery** (stage, slide, grid, the `.block` primitive,
+  transitions, fragments, print). Structural.
+- `theme.css` — the default **look**: `:root` tokens + typography + per-layout
+  styling.
+- `theme.toml` — the engine's layout/block vocabulary **as data** (no templates;
+  furniture is theme-only).
+
+A theme inherits all of it. The CSS cascade is `base.css` → `default/theme.css`
+→ theme `[tokens]` (override the `:root` defaults) → theme `theme.css` (overrides
+everything). Layouts start from `default/theme.toml`; a theme's `[layout.*]` may
+override its `template` and/or replace its `blocks`. `theme.css` is optional. So a
+minimal theme is `name = "…"` plus a few
+tokens. Reference themes: **`default`** (the baseline — machinery + look + layout
+data),
 **`paper`** (token overrides + a 3-rule `theme.css` → light editorial), and
 **`bold`** (electric high-contrast keynote).
 
-**Theme resolution** (`Theme::load`): a built-in name (`midnight`, embedded in
+**Theme resolution** (`Theme::load`): a built-in name (`default`, embedded in
 the binary), a directory path, or a name under `./themes/`. Selected by the
-`--theme` flag, else the deck's `theme:` frontmatter, else `midnight`.
+`--theme` flag, else the deck's `theme:` frontmatter, else `default`.
 
 Slide-content images (content + backgrounds) are inlined as base64 data URIs
 (`--no-inline` opts out). A theme's own CSS assets (background images, self-hosted
@@ -302,17 +342,20 @@ Remote assets (e.g. a Google Fonts `@import`) are not fetched.
 - Grid engine (size from theme); layouts as data-driven slot tables.
 - **Themes as TOML** (tokens + grid + layout rects) + CSS; loaded from a built-in
   name, a directory path, or `./themes/`; selected via `--theme` or frontmatter.
-- **Theme inheritance**: `base.css` + default layouts in the engine; a theme only
-  writes overrides. Two reference themes: `midnight` (pure inheritance) + `paper`.
+- **Theme inheritance**: the built-in `default` theme (`themes/default/`:
+  `base.css` machinery + `theme.css` look + `theme.toml` layout data) is compiled
+  in and inherited by every theme, which only writes overrides.
 - Layouts: `title`, `section`, `bullets`, `statement`, `quote`, `two-col`,
-  `media-split`, `stat`, `stat-3`/`stat-4`, `compare`, `code`, `table`, `image`,
-  `raw`. Themed Markdown tables with column/row/row-header emphasis.
+  `media-split`, `stat` (repeatable figures), `compare`, `code`, `table`, `image`,
+  `raw`, `free`. Themed Markdown tables with column/row/row-header emphasis.
+- **Templates** (theme furniture) + **blocks** (the unified placed-region
+  primitive): fixed vs editable by content, single-sink authoring, repeatables.
 - Fixed-aspect **stage** (1920×1080 / 16:9 default) with letterbox; pure-CSS
   container-unit scaling; square 32×18 grid; theme-overridable aspect/size.
 - Deck chrome (frontmatter toggles): `slide-numbers`, `progress`, `footer`.
-- Three reference themes: `midnight`, `paper`, `bold`.
+- Three reference themes: `default`, `paper`, `bold`.
 - `ondeck watch` (live-reload server) + `ondeck build --open`.
-- Test suite (`cargo test`): parser, grid, fragments, theme, render (19 tests).
+- Test suite (`cargo test`): parser, grid, fragments, theme, render (36 tests).
 - `free` layout + `at="…"` coordinate escape hatch (any slot may override).
 - Code highlighting at build via syntect, emitted as **theme-coloured CSS
   classes** (`syn-*`) — no client JS, and overridable per theme.

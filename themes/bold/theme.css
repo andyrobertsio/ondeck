@@ -20,7 +20,7 @@ strong { color: var(--accent); }
 .layout-bullets ul > li::before { width: 0.55em; height: 0.55em; border-radius: 0; }
 
 /* Solid electric stat numbers instead of the base gradient. */
-.stat-value {
+.layout-stat .block-figure strong {
   background: none;
   -webkit-background-clip: border-box;
   background-clip: border-box;
@@ -29,4 +29,4 @@ strong { color: var(--accent); }
 }
 
 .layout-statement h1 { font-weight: 800; }
-.layout-quote .slot-body::before { opacity: 0.9; }
+.layout-quote .block-body::before { opacity: 0.9; }

@@ -11,10 +11,11 @@ This document is the exhaustive "what can I target" reference.
 - [theme.toml](#themetoml)
 - [Tokens](#tokens)
 - [The grid & stage](#the-grid--stage)
+- [Blocks & templates](#blocks--templates)
 - [theme.css: the CSS vocabulary](#themecss-the-css-vocabulary)
   - [Structure](#structure-engine-stable)
   - [Typography defaults](#typography-defaults)
-  - [Layouts & slots](#layouts--slots)
+  - [Layouts & blocks](#layouts--blocks)
   - [Syntax-highlight tokens](#syntax-highlight-tokens-code)
   - [Deck chrome](#deck-chrome)
   - [Fragments & transitions](#fragments--transitions)
@@ -33,17 +34,25 @@ themes/<name>/
   theme.css    # CSS overrides on the base stylesheet       (optional)
 ```
 
-The engine ships a **base stylesheet** (`src/assets/base.css`) and **default
-layouts**. A theme *inherits all of it* and overrides only what it names — so a
-theme can be as small as `name = "x"` plus a handful of tokens.
+The baseline is the built-in **`default` theme** in `themes/default/`, compiled
+into the binary. Every theme inherits it:
+- `base.css` — engine **machinery** (stage, slide, grid, the `.block` primitive,
+  transitions, fragments, print). Structural; you rarely touch it.
+- `theme.css` — the default **look** (palette tokens, typography, per-layout
+  styling). This is the kind of thing your theme overrides.
+- `theme.toml` — the engine's **layout/block vocabulary** as data.
 
-**Cascade order:** `base.css` → your `[tokens]` (override the `:root` defaults) →
-your `theme.css` (overrides everything). **Layouts:** start from the engine
-defaults; your `[layout.*]` overrides one or adds a new one.
+A theme overrides only what it names — so it can be as small as `name = "x"` plus
+a handful of tokens.
+
+**Cascade order:** `base.css` (machinery) → `default/theme.css` (default look) →
+your `[tokens]` (override the `:root` defaults) → your `theme.css` (overrides
+everything). **Layouts:** start from `default/theme.toml`'s definitions; your
+`[layout.*]` overrides a layout's `template` and/or its `blocks`.
 
 **Resolution:** a theme is selected by `--theme <spec>` or a deck's `theme:`
-frontmatter (flag wins). `<spec>` is a built-in name (`midnight`), a directory
-path, or a name under `./themes/`. Built-ins: `midnight`, `paper`, `bold`.
+frontmatter (flag wins). `<spec>` is a built-in name (`default`), a directory
+path, or a name under `./themes/`. Built-ins: `default`, `paper`, `bold`.
 
 ## theme.toml
 
@@ -60,19 +69,26 @@ bg = "#0d1017"
 accent = "#7aa2f7"
 # … see Tokens below
 
-[layout.bullets]             # optional; override a layout's slot rectangles
-body = "x4 y3 x28 y16"       # "x{c1} y{r1} x{c2} y{r2}", inclusive grid cells
+[template.brand]             # fixed furniture; one template may be the default
+default = true
+[template.brand.blocks]
+logo = { at = "x27 y1 x31 y3", image = "url('logo.svg')" }
+
+[layout.bullets.blocks]      # override a layout's blocks
+body = { at = "x4 y3 x28 y16" }   # `at` = "x{c1} y{r1} x{c2} y{r2}", inclusive cells
 ```
 
-Layout override values use the same coordinate syntax as the `at=` escape hatch:
-cells are 1-indexed on the `cols`×`rows` grid, inclusive of both corners. Slot
-names per layout are listed under [Layouts & slots](#layouts--slots).
+`at` uses the same coordinate syntax as the `at=` escape hatch: cells are
+1-indexed on the `cols`×`rows` grid, inclusive of both corners. The block model
+(fixed vs editable, templates, repeatables) is described under
+[Blocks & templates](#blocks--templates); block names per layout under
+[Layouts & blocks](#layouts--blocks).
 
 ## Tokens
 
 Every token is a CSS variable consumed by the base stylesheet, so changing one
 restyles every layout at once. Defaults below are the engine values (the
-`midnight` look).
+`default` look).
 
 | Token | Default | Controls |
 |---|---|---|
@@ -84,7 +100,7 @@ restyles every layout at once. Defaults below are the engine values (the
 | `accent-2` | `#bb9af7` | Secondary accent: `em`, stat gradient end, string tokens |
 | `rule` | `#232838` | Hairlines, the progress-bar track |
 | `frame` | `#000` | Letterbox bar colour around the stage (also per-deck via `frame:` frontmatter) |
-| `pad` | `8cqmin` | Padding unit used by media-split body and image captions |
+| `pad` | `8cqmin` | Padding unit used by the media-split body |
 | `font` | system sans stack | Main font (`font-family`) |
 | `mono` | system mono stack | Code/monospace font |
 | `stage-w` | `1920` | Design width — drives the stage aspect ratio |
@@ -93,8 +109,7 @@ restyles every layout at once. Defaults below are the engine values (the
 | `fx-ease` | `cubic-bezier(0.2,0.7,0.2,1)` | Transition easing |
 
 `--cols` / `--rows` are emitted from `[grid]` (defaults 32/18) and drive the
-slide grid. `--stat-count` is set per-slide by the engine (you can read it but
-not set it from a theme).
+slide grid.
 
 ## The grid & stage
 
@@ -105,6 +120,81 @@ not set it from a theme).
 - **Sizing uses container-query units** (`cqmin`/`cqw`/`cqh`) resolved against
   the slide, so type and spacing scale with the stage. `1cqmin` = 1% of the
   slide's smaller dimension. Prefer `cqmin` for any sizes you add.
+
+## Blocks & templates
+
+A **block** is the one placed-region primitive. A block is **fixed** when the
+theme gives it content (`image`/`text`) and **editable** otherwise (the author
+fills it). Editable blocks come from layouts; fixed furniture comes from
+templates.
+
+### Block properties
+
+Every block needs `at`; the rest are optional. Set on any block in a
+`[…blocks.<name>]` table (inline `{ … }` or a full sub-table).
+
+| Property | Values | Default | Meaning |
+|---|---|---|---|
+| `at` | `"x{c1} y{r1} x{c2} y{r2}"` | **required** | Grid placement, inclusive cells |
+| `image` | `url('…')` | — | Image content (inlined against the theme dir) → **fixed** |
+| `text` | Markdown string | — | Text content → **fixed** |
+| `layer` | `front` \| `behind` | `front` (fixed) | Stack vs main content (`.block.layer-*`) |
+| `opacity` | `0`–`1` | `1` | Block opacity (e.g. a faint watermark) |
+| `align-x` | `left` \| `center` \| `right` | `center` | Horizontal alignment (`.block.ax-*`) |
+| `align-y` | `top` \| `center` \| `bottom` | `center` | Vertical alignment (`.block.ay-*`) |
+| `fit` | `scale` \| `cover` \| `contain` | `scale` | Content sizing (`.block.fit-*`) |
+| `transition` | a fragment fx name | theme/slide default | Fragment transition for this block's content |
+| `repeatable` | `true` \| `false` | `false` | A per-entry stamp (editable only) |
+| `repeatable-direction` | `up`\|`down`\|`left`\|`right` | `down` | Flow direction of copies |
+| `repeatable-margin` | integer (cells) | `0` | Gap between copies |
+| `repeatable-limit` | integer | — | Max copies; extras dropped |
+| `repeatable-align` | `start`\|`center`\|`end` | `start` | Position copies within the limit-sized track |
+
+### Templates (fixed furniture)
+
+A **template** is a named bundle of fixed blocks. One may be `default` (applied
+to every layout that doesn't name its own). A layout selects furniture with
+`template = "<name>"`, or opts out with `template = "none"`.
+
+```toml
+[template.brand]
+default = true                 # every layout gets this unless it says otherwise
+[template.brand.blocks]
+logo      = { at = "x27 y1 x31 y3", image = "url('logo.svg')" }                       # top-right, front
+watermark = { at = "x1 y14 x10 y17", image = "url('mark.svg')", layer = "behind", opacity = 0.12 }
+
+[template.bare]                # a furniture-free look for cover/section slides
+[template.bare.blocks]
+
+[layout.title]
+template = "bare"              # title opts out of the logo/watermark
+```
+
+Furniture is **inlined** (image `url()` resolved against the theme dir, like
+fonts), so the deck stays self-contained. A block image can't be re-coloured by
+tokens; for a mark that follows `--accent`, use a monochrome SVG and the mask
+trick on its `.block-<name>`:
+
+```css
+.block-logo {
+  background: var(--accent);
+  -webkit-mask: url('logo.svg') center / contain no-repeat;
+          mask: url('logo.svg') center / contain no-repeat;
+}
+```
+
+> **A layout can't reposition or hide an individual template block** — furniture
+> is all-or-nothing per layout (select a different template, or `none`). Vary the
+> look by defining a second template, as `bare` above. You *can* still restyle
+> furniture via `.block-<name>` / `.template-<name> .block-<name>` in `theme.css`.
+
+### Repeatable blocks
+
+A `repeatable` editable block stamps one copy per authored `:::name` entry. Copies
+flow from the anchor `at` along `repeatable-direction` by *(block extent +
+`repeatable-margin`)*, capped at `repeatable-limit`, and positioned within that
+limit-sized track by `repeatable-align` (`center` centres a partial count). This
+is how `stat`'s `figure` works — define your own for timelines, logo walls, etc.
 
 ## theme.css: the CSS vocabulary
 
@@ -121,8 +211,12 @@ specificity wins; add a class or `!important` only if you must).
 | `.slide` | One slide; fills the stage; container for content sizing |
 | `.slide.active` / `.slide.leaving` | Current / outgoing-during-transition |
 | `.slide-content` | The `cols`×`rows` grid |
-| `.slot`, `.slot-<name>` | A placed grid region (e.g. `.slot-body`, `.slot-left`) |
-| `.slot .fit` | Scale-to-fit wrapper inside each slot |
+| `.block`, `.block-<name>` | A placed grid region (e.g. `.block-body`, `.block-left`) |
+| `.block .fit` | Scale-to-fit wrapper inside a `fit:scale` block |
+| `.block.layer-behind` / `.layer-front` | Stack band vs main content |
+| `.block.ax-*` / `.block.ay-*` | Horizontal / vertical alignment hooks |
+| `.block.fit-cover` / `.fit-contain` | Media-sizing hooks (size the inner `<img>`) |
+| `.layout-<name>` / `.template-<name>` | On the slide: its layout and selected template |
 | `.slide-overlay` | Background-overlay scrim element (when `background-overlay` set) |
 
 ### Typography defaults
@@ -131,35 +225,37 @@ specificity wins; add a class or `!important` only if you must).
 `strong` → `--fg` bold; `em` → `--accent-2` (not italic); inline `code` →
 `--mono` on `--bg-2`. Override any of these globally or scoped to a layout.
 
-### Layouts & slots
+### Layouts & blocks
 
-Each slide gets a `.layout-<name>` class. Slot names (the `:::name` regions, plus
-the implicit `body`/`head`) per layout:
+Each slide gets a `.layout-<name>` class. Block names (the `:::name` regions, plus
+the implicit single-sink `body`/`head`) per layout, each rendered as
+`.block-<name>`:
 
-| Layout | `.layout-` class | Slots | Notable inner hooks |
+| Layout | `.layout-` class | Blocks | Notable inner hooks |
 |---|---|---|---|
 | title | `layout-title` | `body` | `.layout-title h1/h2/p` (h2 & p are the subtitle/meta) |
 | section | `layout-section` | `body` | `.layout-section h1` (accent, centered) |
 | bullets | `layout-bullets` | `body` | `li`, `ul > li::before` (marker), `ol > li::before`, `li li` (sub-items) |
 | statement | `layout-statement` | `body` | `.layout-statement h1` (centered) |
-| quote | `layout-quote` | `body`, `cite` | `.slot-body::before` (opening “ mark), `.slot-cite p::before` (— dash) |
-| two-col | `layout-two-col` | `head`, `left`, `right` | `.slot-head` (bottom-aligned) |
-| media-split | `layout-media-split` | `media`, `body` | `.slot-media` (cover image), `.slot-body` (padded) |
-| stat / stat-3 / stat-4 | `layout-stat` / `-stat-3` / `-stat-4` | `head`, `stats` | `.stat-grid` (`--stat-count` columns), `.stat-value`, `.stat-label` |
-| compare | `layout-compare` | `head`, `left`, `right` | `.slot-left`/`.slot-right` are cards (`--bg-2`); `h3`, `li` |
+| quote | `layout-quote` | `body`, `cite` | `.block-body::before` (opening “ mark), `.block-cite p::before` (— dash) |
+| two-col | `layout-two-col` | `head`, `left`, `right` | `.block-head` (bottom-aligned) |
+| media-split | `layout-media-split` | `media`, `body` | `.block-media` (cover image, `fit:cover`), `.block-body` (padded) |
+| stat | `layout-stat` | `head`, `figure` (repeatable) | `.block-figure strong` (the big number), `.block-figure p` (label) |
+| compare | `layout-compare` | `head`, `left`, `right` | `.block-left`/`.block-right` are cards (`--bg-2`); `h3`, `li` |
 | code | `layout-code` | `body` | `pre`, `pre code`, syntax tokens (below) |
 | table | `layout-table` | `body` | `table`/`thead th`/`tbody td`; emphasis classes (see [Tables](#tables--emphasis)) |
-| image | `layout-image` | `body` (+ `caption`) | `.image-fill`, `.layout-image img`, `.fit-contain img`, `.image-caption` |
+| image | `layout-image` | `body` | `.layout-image img`, `.fit-contain img`; full-bleed (`.slide-content` is `display:block`) |
 | raw | `layout-raw` | `body` | author HTML passes through; `.slide-content` is `display:block` |
-| free | `layout-free` | `block` (repeatable, `at=`) | `.slot-block` |
+| free | `layout-free` | author-placed `:::name at="…"` | `.block-<name>` per authored block |
 
 Notable shared structures worth styling:
-- **Stat numbers** use a gradient (`--accent`→`--accent-2`) clipped to text via
-  `.stat-value`. On light themes you often want a solid colour instead:
-  `​.stat-value { background: none; -webkit-background-clip: border-box; color: var(--accent); }`
-- **Quote mark**: `.layout-quote .slot-body::before` (the big “); recolour/resize
+- **Stat numbers**: each `figure` is author Markdown — `**value**` becomes
+  `.block-figure strong`, styled with a gradient (`--accent`→`--accent-2`)
+  clipped to text. On light themes use a solid colour:
+  `​.layout-stat .block-figure strong { background: none; -webkit-background-clip: border-box; color: var(--accent); }`
+- **Quote mark**: `.layout-quote .block-body::before` (the big “); recolour/resize
   or set `content: ""` to remove.
-- **Compare cards**: `.layout-compare .slot-left, .layout-compare .slot-right`.
+- **Compare cards**: `.layout-compare .block-left, .layout-compare .block-right`.
 
 ### Syntax-highlight tokens (code)
 

@@ -37,9 +37,9 @@ HTML does not.
 1. **Understand the content & intent.** What's the material, the audience, the
    rough length? If the user handed you raw notes/a doc, extract the structure
    (sections → slides). If the ask is vague, make reasonable choices and refine.
-2. **Pick a theme.** Default `midnight` (dark). `paper` (light editorial) and
-   `bold` (high-contrast keynote) also ship. Set it in deck frontmatter. To make
-   a custom one, use the `ondeck-theme` skill.
+2. **Pick a theme.** The built-in `default` (dark) is used if none is set;
+   `paper` (light editorial) and `bold` (high-contrast keynote) also ship. Set it
+   in deck frontmatter. To make a custom one, use the `ondeck-theme` skill.
 3. **Draft the `.md`** — terse, one idea per slide, choosing a layout per slide
    (see *Choosing a layout*).
 4. **Build:** `ondeck build talk.md` (writes `talk.html` next to the source; use
@@ -59,7 +59,7 @@ Frontmatter is flat `key: value` (quote values with spaces/`#`).
 
 ```markdown
 ---
-theme: midnight
+theme: default
 title: Q3 Review
 slide-numbers: true
 ---
@@ -86,8 +86,10 @@ reveal: true
 > block after it (see the title slide above). A slide body must also not *start*
 > with a `word:` line, or it's mistaken for frontmatter — lead with a heading.
 
-Most layouts take the slide body directly. Multi-region layouts use fenced
-**slots**: `:::name` … `:::`. `::: notes` holds speaker notes (hidden).
+A slide is built from **blocks**. Single-block layouts (title, bullets, statement,
+section, code, table, image) take the body directly — just write Markdown.
+Multi-block layouts use fenced markers `:::name` … `:::` for every block.
+`::: notes` holds speaker notes (hidden).
 
 ## Choosing a layout
 
@@ -100,39 +102,51 @@ layout to the content.
 | A topic/section change | `section` | Big divider — use these to give structure |
 | A list of points | `bullets` *(default)* | The workhorse; keep to ~3–6 items |
 | One punchy idea / takeaway | `statement` | A big centered headline (`#`), optionally with one supporting line under it. Great for emphasis |
-| A quotation | `quote` | Body = quote; `:::cite` = attribution |
-| A key metric (or 2–4) | `stat` / `stat-3` / `stat-4` | repeatable `:::stat` as `value · label` |
-| Two things side by side | `two-col` | `:::left` / `:::right` (+ heading) |
-| A vs B | `compare` | `:::left` / `:::right` rendered as cards |
-| Image + explanation | `media-split` | `:::media` image one side, text the other (`media: right` to flip) |
-| An image *is* the point | `image` | body `![](src)` + optional `:::caption`; `fit: full|contain` |
+| A quotation | `quote` | `:::body` = quote; `:::cite` = attribution |
+| A key metric (or 2–4) | `stat` | `:::head` + a repeatable `:::figure` per number (`**value**` + label) |
+| Two things side by side | `two-col` | `:::head` / `:::left` / `:::right` |
+| A vs B | `compare` | `:::head` / `:::left` / `:::right` rendered as cards |
+| Image + explanation | `media-split` | `:::media` image one side, `:::body` text the other (`media: right` to flip) |
+| An image *is* the point | `image` | body `![](src)`; `fit: full|contain` |
 | Code | `code` | fenced code block, syntax-highlighted |
 | Tabular data / a feature matrix | `table` | a Markdown table; keep it modest (≤~6 cols, ≤~8 rows) |
 | Something bespoke | `raw` (raw HTML) or `free` (coordinate placement) | escape hatches; use rarely |
 
-### Slot examples
+### Block examples
 
 ```markdown
 ---
-layout: stat-3
+layout: stat
 ---
+:::head
 # By the numbers
-:::stat
-142% · of revenue target
 :::
-:::stat
-+18 · NPS points
+:::figure
+**142%**
+
+of revenue target
 :::
-:::stat
-40% · faster p95
+:::figure
+**+18**
+
+NPS points
+:::
+:::figure
+**40%**
+
+faster p95
 :::
 ```
+The `figure` block is repeatable — write one `:::figure` per number (up to 4,
+auto-centred). Bold (`**…**`) is the big number; the rest is the label.
 
 ```markdown
 ---
 layout: quote
 ---
+:::body
 The best way to predict the future is to invent it.
+:::
 :::cite
 Alan Kay
 :::
@@ -143,8 +157,10 @@ Alan Kay
 layout: media-split
 media: right
 ---
+:::body
 # Built for the field
 Crews see the next job, route, and parts before they leave the depot.
+:::
 :::media
 ![Depot](depot.jpg)
 :::

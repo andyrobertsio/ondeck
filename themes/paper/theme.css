@@ -5,7 +5,12 @@
 .layout-bullets ul > li::before { border-radius: 50%; }
 
 /* Solid accent stat numbers (the base uses a gradient that suits dark themes). */
-.stat-value { background: none; -webkit-background-clip: border-box; color: var(--accent); }
+.layout-stat .block-figure strong {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  color: var(--accent);
+}
 
 /* A hairline rule under section headings for an editorial feel. */
 .layout-section h1 { border-bottom: 2px solid var(--rule); padding-bottom: 0.2em; }

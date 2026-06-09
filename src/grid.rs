@@ -1,4 +1,4 @@
-//! The grid coordinate primitive shared by themes (layout slot rects) and the
+//! The grid coordinate primitive shared by themes (block rects) and the
 //! `at="…"` escape hatch.
 
 /// A grid rectangle stored as CSS grid *line* numbers (1-indexed, end-exclusive).
@@ -38,6 +38,80 @@ impl Rect {
             row_end: self.row_end,
         }
     }
+
+    /// Span in grid lines: (cols, rows).
+    pub fn extent(&self) -> (i16, i16) {
+        (
+            self.col_end as i16 - self.col_start as i16,
+            self.row_end as i16 - self.row_start as i16,
+        )
+    }
+
+    /// Shift by (dcols, drows) grid lines.
+    pub fn translate(&self, dc: i16, dr: i16) -> Rect {
+        Rect {
+            col_start: (self.col_start as i16 + dc).max(1) as u8,
+            col_end: (self.col_end as i16 + dc).max(1) as u8,
+            row_start: (self.row_start as i16 + dr).max(1) as u8,
+            row_end: (self.row_end as i16 + dr).max(1) as u8,
+        }
+    }
+}
+
+/// Direction a repeatable block flows from its anchor.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum RepeatDir {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+/// How rendered copies sit within the limit-sized track.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum RepeatAlign {
+    Start,
+    Center,
+    End,
+}
+
+/// Place `count` copies of `anchor`, each offset along `dir` by
+/// (extent-along-axis + `margin`). `limit` sizes the track that `align`
+/// positions the copies within (centering/ending partial counts); when
+/// `limit <= count` there is no slack and `align` is a no-op.
+pub fn repeat_rects(
+    anchor: &Rect,
+    dir: RepeatDir,
+    margin: u8,
+    count: usize,
+    limit: usize,
+    align: RepeatAlign,
+) -> Vec<Rect> {
+    let (w, h) = anchor.extent();
+    let (is_col, sign): (bool, i16) = match dir {
+        RepeatDir::Right => (true, 1),
+        RepeatDir::Left => (true, -1),
+        RepeatDir::Down => (false, 1),
+        RepeatDir::Up => (false, -1),
+    };
+    let step = (if is_col { w } else { h }) + margin as i16;
+    let n = count.min(limit); // limit caps; extras are dropped
+    let slack = (limit.saturating_sub(n)) as i16 * step;
+    let align_off = match align {
+        RepeatAlign::Start => 0,
+        RepeatAlign::Center => sign * (slack / 2),
+        RepeatAlign::End => sign * slack,
+    };
+    (0..n)
+        .map(|i| {
+            let off = align_off + sign * (i as i16) * step;
+            if is_col {
+                anchor.translate(off, 0)
+            } else {
+                anchor.translate(0, off)
+            }
+        })
+        .collect()
 }
 
 /// Parse `x2 y5 x8 y6`: two x tokens (col start/end, inclusive) and two y tokens
@@ -91,5 +165,39 @@ mod tests {
             Rect::cells(2, 5, 8, 6).style(),
             "grid-column:2/9;grid-row:5/7;"
         );
+    }
+
+    fn starts(rects: &[Rect]) -> Vec<(u8, u8)> {
+        rects.iter().map(|r| (r.col_start, r.row_start)).collect()
+    }
+
+    #[test]
+    fn repeat_right_flows_by_extent_plus_margin() {
+        // anchor 6 cells wide (cols 4..=9 → lines 4/10, extent 6), margin 1 → step 7.
+        let a = Rect::cells(4, 7, 9, 13);
+        let rs = repeat_rects(&a, RepeatDir::Right, 1, 3, 3, RepeatAlign::Start);
+        assert_eq!(starts(&rs), vec![(4, 7), (11, 7), (18, 7)]);
+    }
+
+    #[test]
+    fn repeat_down_flows_vertically() {
+        let a = Rect::cells(4, 3, 9, 5); // height extent 3 (rows 3/6), margin 0 → step 3
+        let rs = repeat_rects(&a, RepeatDir::Down, 0, 2, 2, RepeatAlign::Start);
+        assert_eq!(starts(&rs), vec![(4, 3), (4, 6)]);
+    }
+
+    #[test]
+    fn repeat_center_aligns_partial_count_in_track() {
+        // limit 4, count 2, step 7 → slack = 2*7 = 14, center shifts by 7.
+        let a = Rect::cells(4, 7, 9, 13);
+        let rs = repeat_rects(&a, RepeatDir::Right, 1, 2, 4, RepeatAlign::Center);
+        assert_eq!(starts(&rs), vec![(11, 7), (18, 7)]);
+    }
+
+    #[test]
+    fn repeat_left_reverses() {
+        let a = Rect::cells(20, 7, 25, 13); // extent 6, margin 0 → step 6
+        let rs = repeat_rects(&a, RepeatDir::Left, 0, 2, 2, RepeatAlign::Start);
+        assert_eq!(starts(&rs), vec![(20, 7), (14, 7)]);
     }
 }

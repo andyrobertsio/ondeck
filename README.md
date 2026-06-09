@@ -32,12 +32,14 @@ headless browser over that same output.
 
 - **Markdown source**, slides split by `---`, with per-slide frontmatter.
 - **Layout vocabulary**: title, section, bullets, statement, quote, two-col,
-  media-split, stat (+ `stat-3`/`stat-4`), compare, code, image, raw.
+  media-split, stat, compare, code, table, image, raw, free.
 - **Fixed-aspect stage** (16:9, 1920×1080) that scales to any window with
   letterbox bars — the on-screen view matches the export exactly.
-- **32×18 grid** with a coordinate escape hatch (`layout: free`, `at="x… y…"`).
-- **Theming**: token + CSS themes with inheritance (a theme can be a few tokens).
-  Three built in: `midnight`, `paper`, `bold`.
+- **32×18 grid** of **blocks** (the one placed-region primitive) with a
+  coordinate escape hatch (`layout: free`, `at="x… y…"`).
+- **Theming**: token + CSS themes with inheritance (a theme can be a few tokens),
+  plus **templates** for fixed furniture (logo, watermark). Three built in:
+  `default`, `paper`, `bold`.
 - **Fragments** (incremental reveal) with a range of transitions, plus
   slide-to-slide transitions.
 - **Self-contained output**: images embedded as data URIs.
@@ -71,7 +73,7 @@ Create `talk.md`:
 
 ```markdown
 ---
-theme: midnight
+theme: default
 title: My Talk
 slide-numbers: true
 ---
@@ -95,13 +97,18 @@ reveal: true
 ---
 layout: stat
 ---
+:::head
 # By the numbers
-
-:::stat
-142% · of target
 :::
-:::stat
-+18 · NPS
+:::figure
+**142%**
+
+of target
+:::
+:::figure
+**+18**
+
+NPS
 :::
 ```
 
@@ -131,16 +138,19 @@ frontmatter.
 
 Frontmatter is flat `key: value` pairs (values may be quoted).
 
-### Slides & slots
+### Slides & blocks
 
-Most layouts take the slide body directly. Multi-region layouts use fenced
-**slots**:
+A **block** is a placed region on the slide. If a layout has a single editable
+block, just write Markdown — it flows in (the **single-sink** rule). Layouts with
+several blocks address each with a fenced `:::name` … `:::` marker:
 
 ```markdown
 ---
 layout: two-col
 ---
+:::head
 # Heading
+:::
 :::left
 - left column
 :::
@@ -153,22 +163,28 @@ Speaker notes — embedded hidden, never shown on the slide.
 :::
 ```
 
+A **repeatable** block (like `stat`'s `figure`) is filled by repeating its
+marker — one copy per entry.
+
 ### Layouts
 
-| Layout | Content | Use |
+Single-block layouts take the body directly; multi-block layouts (marked ✳) need
+a `:::name` per block.
+
+| Layout | Blocks | Use |
 |---|---|---|
 | `title` | `#` title, `##` subtitle, rest meta | Opening slide |
 | `section` | body | Section divider |
 | `bullets` *(default)* | body | The workhorse |
 | `statement` | body | Big centered idea |
-| `quote` | body + `:::cite` | Attributed pull-quote |
-| `two-col` | `:::left` / `:::right` (+ heading) | Side by side |
-| `media-split` | `:::media` image + body; `media: right` | Image one side, text the other |
-| `stat` / `stat-3` / `stat-4` | repeatable `:::stat` (`value · label`) | Big-number slides |
-| `compare` | `:::left` / `:::right` | A vs B cards |
+| `quote` ✳ | `:::body` + `:::cite` | Attributed pull-quote |
+| `two-col` ✳ | `:::head` / `:::left` / `:::right` | Side by side |
+| `media-split` ✳ | `:::media` image + `:::body`; `media: right` | Image one side, text the other |
+| `stat` ✳ | `:::head` + repeatable `:::figure` (`**value**` + label) | Big-number slides |
+| `compare` ✳ | `:::head` / `:::left` / `:::right` | A vs B cards |
 | `code` | fenced code block | Syntax-highlighted at build |
 | `table` | Markdown table | Themed; `highlight-col`/`-row`/`row-headers` emphasis |
-| `image` | `![](src)` + `:::caption`; `fit: full\|contain` | Image *is* the slide |
+| `image` | `![](src)`; `fit: full\|contain` | Image *is* the slide |
 | `raw` | raw HTML | Escape hatch |
 | `free` | `:::block at="x… y…"` | Coordinate placement |
 
@@ -258,12 +274,12 @@ ondeck watch <input.md> [options]
 
 ## Themes
 
-A theme is a directory of `theme.toml` (tokens, grid, layout rects) and an
-optional `theme.css` (styling). Everything is inherited from the engine's
+A theme is a directory of `theme.toml` (tokens, grid, templates, layout blocks)
+and an optional `theme.css` (styling). Everything is inherited from the engine's
 defaults, so a theme can be as small as a name plus a few token overrides.
 
 Select a theme with `--theme <name|path>` or the deck's `theme:` frontmatter.
-Resolution order: `--theme` → frontmatter → `midnight`. A `<name>` is looked up
+Resolution order: `--theme` → frontmatter → `default`. A `<name>` is looked up
 as a built-in, a directory, then `./themes/<name>/`.
 
 ```toml
@@ -276,8 +292,13 @@ bg = "#101417"
 accent = "#ff5470"
 frame = "#000000"               # letterbox colour
 
-[layout.bullets]                # override a layout's slot rectangles
-body = "x4 y3 x28 y16"
+[template.brand]                # fixed furniture, applied to every slide
+default = true
+[template.brand.blocks]
+logo = { at = "x26 y2 x28 y3", image = "url('logo.svg')" }   # inlined; or layer="behind" for a watermark
+
+[layout.bullets.blocks]         # override a layout's blocks (placement, etc.)
+body = { at = "x4 y3 x28 y16" }
 ```
 
 ```css
@@ -287,8 +308,8 @@ body = "x4 y3 x28 y16"
 
 See [`themes/paper`](themes/paper) (light) and [`themes/bold`](themes/bold)
 (high-contrast) for worked examples. **[THEMING.md](THEMING.md) is the complete
-theming reference** — every token, layout selector, slot, syntax-token class, and
-chrome/fragment hook you can style.
+theming reference** — every token, the block model, templates, layout/block
+selectors, syntax-token class, and chrome/fragment hook you can style.
 
 ## Authoring with Claude
 
@@ -328,9 +349,11 @@ chrome — a good smoke test and reference.
 | `src/pdf.rs` | PDF export (headless browser) |
 | `src/pptx.rs` | PPTX export (image-per-slide OOXML) |
 | `src/watch.rs` | Live-reload dev server |
-| `src/assets/base.css` | Engine stylesheet (the grid/layout vocabulary) |
-| `src/assets/runtime.js` | Navigation, fragments, transitions, scale-to-fit |
-| `themes/` | Built-in themes (embedded at build time) |
+| `themes/default/base.css` | Engine machinery (stage, grid, `.block`, transitions, print) |
+| `themes/default/theme.css` | The default look (palette, typography, per-layout styling) |
+| `themes/default/theme.toml` | The engine's layout/block vocabulary, as data |
+| `src/assets/runtime.js` | Deck runtime: navigation, fragments, transitions, scale-to-fit |
+| `themes/` | Built-in themes; `default` is compiled into the binary |
 | `SPEC.md` | Format & architecture reference |
 
 ## Notes & limitations
