@@ -299,8 +299,8 @@ fn resolve_block(
         Some(o) => return Err(err(format!("bad align-x '{o}' (left|center|right)"))),
     };
     let align_y = match f.align_y.as_deref() {
-        None | Some("center") => Align::Center,
-        Some("top") => Align::Start,
+        None | Some("top") => Align::Start, // default is top
+        Some("center") => Align::Center,
         Some("bottom") => Align::End,
         Some(o) => return Err(err(format!("bad align-y '{o}' (top|center|bottom)"))),
     };

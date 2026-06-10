@@ -141,7 +141,7 @@ Every block needs `at`; the rest are optional. Set on any block in a
 | `layer` | `front` \| `behind` | `front` (fixed) | Stack vs main content (`.block.layer-*`) |
 | `opacity` | `0`–`1` | `1` | Block opacity (e.g. a faint watermark) |
 | `align-x` | `left` \| `center` \| `right` | `center` | Horizontal alignment (`.block.ax-*`) |
-| `align-y` | `top` \| `center` \| `bottom` | `center` | Vertical alignment (`.block.ay-*`) |
+| `align-y` | `top` \| `center` \| `bottom` | `top` | Vertical alignment (`.block.ay-center`/`.ay-end`) |
 | `fit` | `scale` \| `cover` \| `contain` | `scale` | Content sizing (`.block.fit-*`) |
 | `transition` | a fragment fx name | theme/slide default | Fragment transition for this block's content |
 | `repeatable` | `true` \| `false` | `false` | A per-entry stamp (editable only) |
