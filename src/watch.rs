@@ -14,22 +14,57 @@ struct State {
     version: u64,
 }
 
-/// Paths whose changes should trigger a rebuild: the source, plus an external
-/// theme's files (built-in themes are compiled in, so editing them needs a
-/// rebuild of `deck` itself).
-fn watch_paths(input: &Path, theme: Option<&str>) -> Vec<PathBuf> {
-    let mut paths = vec![input.to_path_buf()];
-    if let Some(t) = theme {
-        let dir = if Path::new(t).is_dir() {
-            Some(PathBuf::from(t))
-        } else {
-            let p = Path::new("themes").join(t);
-            p.is_dir().then_some(p)
-        };
-        if let Some(d) = dir {
-            paths.push(d.join("theme.toml"));
-            paths.push(d.join("theme.css"));
+/// The theme a deck resolves to: `--theme` override, else its frontmatter
+/// `theme:`, else none (the compiled-in `default`).
+fn frontmatter_theme(src: &str) -> Option<String> {
+    crate::parser::parse(src).frontmatter.get("theme").cloned()
+}
+fn resolve_theme_spec(input: &Path, override_: Option<&str>) -> Option<String> {
+    match override_ {
+        Some(t) => Some(t.to_string()),
+        None => std::fs::read_to_string(input)
+            .ok()
+            .as_deref()
+            .and_then(frontmatter_theme),
+    }
+}
+
+/// The on-disk directory for a theme spec, or None for the built-in `default`
+/// (compiled into the binary — editing it needs a `cargo build`, not a reload).
+fn theme_dir(spec: &str) -> Option<PathBuf> {
+    if spec == "default" {
+        return None;
+    }
+    let direct = Path::new(spec);
+    if direct.is_dir() {
+        return Some(direct.to_path_buf());
+    }
+    let under = Path::new("themes").join(spec);
+    under.is_dir().then_some(under)
+}
+
+/// Collect files under `dir` (recursively) so theme.css/toml *and* assets
+/// (fonts, block images) all trigger a rebuild.
+fn collect_files(dir: &Path, out: &mut Vec<PathBuf>) {
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_dir() {
+                collect_files(&p, out);
+            } else {
+                out.push(p);
+            }
         }
+    }
+}
+
+/// Paths whose changes should trigger a rebuild: the source, plus every file in
+/// the resolved theme's directory (the built-in `default` is compiled in, so its
+/// disk files are excluded). New files added mid-session need a restart.
+fn watch_paths(input: &Path, theme_spec: Option<&str>) -> Vec<PathBuf> {
+    let mut paths = vec![input.to_path_buf()];
+    if let Some(dir) = theme_spec.and_then(theme_dir) {
+        collect_files(&dir, &mut paths);
     }
     paths
 }
@@ -183,7 +218,8 @@ pub fn serve(
         "Built {} slide(s) with theme '{}'",
         built.slides, built.theme
     );
-    let paths = watch_paths(&input, theme.as_deref());
+    let spec = resolve_theme_spec(&input, theme.as_deref());
+    let paths = watch_paths(&input, spec.as_deref());
     let rebuild: Rebuild =
         Box::new(move || crate::build_html(&input, theme.as_deref(), inline).map(|b| b.html));
     run(built.html, rebuild, paths, port, open, false)
@@ -217,9 +253,41 @@ pub fn present(
             "Built {} slide(s) with theme '{}'",
             built.slides, built.theme
         );
-        let paths = watch_paths(&input, theme.as_deref());
+        let spec = resolve_theme_spec(&input, theme.as_deref());
+        let paths = watch_paths(&input, spec.as_deref());
         let rebuild: Rebuild =
             Box::new(move || crate::build_html(&input, theme.as_deref(), inline).map(|b| b.html));
         run(built.html, rebuild, paths, port, open, true)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_frontmatter_theme() {
+        assert_eq!(
+            frontmatter_theme("---\ntheme: paper\ntitle: x\n---\n\n---\n# Hi\n").as_deref(),
+            Some("paper")
+        );
+        assert_eq!(frontmatter_theme("# no frontmatter\n"), None);
+    }
+
+    #[test]
+    fn watches_theme_dir_files() {
+        // themes/paper ships theme.toml + theme.css; both should be watched.
+        let paths = watch_paths(Path::new("deck.md"), Some("paper"));
+        assert!(paths.iter().any(|p| p.ends_with("themes/paper/theme.css")));
+        assert!(paths.iter().any(|p| p.ends_with("themes/paper/theme.toml")));
+    }
+
+    #[test]
+    fn default_theme_is_compiled_in_not_watched() {
+        // `default` lives in the binary; only the deck file is watched.
+        assert_eq!(
+            watch_paths(Path::new("deck.md"), Some("default")),
+            vec![PathBuf::from("deck.md")]
+        );
     }
 }
