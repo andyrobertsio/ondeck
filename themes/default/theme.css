@@ -43,7 +43,8 @@ code { font-family: var(--mono); background: var(--bg-2); padding: 0.1em 0.35em;
 .layout-stat .block-head,
 .layout-two-col .block-head { justify-content: flex-end; }
 .layout-section, .layout-statement { text-align: center; }
-.layout-section .block, .layout-statement .block { align-items: center; }
+/* blocks default to top now, but a divider / big statement reads better centred */
+.layout-section .block, .layout-statement .block { align-items: center; justify-content: center; }
 .layout-section h1 { color: var(--accent); font-size: 6cqmin; }
 .layout-statement h1 { font-weight: 700; }
 

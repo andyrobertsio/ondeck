@@ -227,9 +227,9 @@ fn block_classes(b: &Block) -> String {
         Align::Center => {}
     }
     match b.align_y {
-        Align::Start => c.push_str(" ay-start"),
+        Align::Center => c.push_str(" ay-center"),
         Align::End => c.push_str(" ay-end"),
-        Align::Center => {}
+        Align::Start => {} // top — the default
     }
     c
 }
