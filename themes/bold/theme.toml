@@ -1,7 +1,9 @@
 name = "bold"
+extends = "default"
 transition = "fade-up"
 
 # A high-contrast keynote theme: near-black, electric accent, heavy type.
+# Inherits the core layouts + default look; overrides tokens + a few rules.
 [tokens]
 bg = "#0a0a0a"
 bg-2 = "#171717"
@@ -12,3 +14,6 @@ accent-2 = "#ff5d8f"
 rule = "#2a2a2a"
 frame = "#000000"
 font = '"Helvetica Neue", Helvetica, Arial, sans-serif'
+# Heavier headings — just retune the weight tokens, no CSS needed.
+h1-weight = "800"
+h2-weight = "600"

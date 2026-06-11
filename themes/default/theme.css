@@ -1,50 +1,18 @@
-/* theme.css — the DEFAULT theme's look. Unlike other themes' theme.css (which
-   layer over this), this one is emitted for every deck as the base look that all
-   themes inherit: the palette tokens, typography, and per-layout styling. The
-   engine machinery is in base.css; the layout/block geometry is in theme.toml. */
+/* theme.css — the DEFAULT theme's look: per-layout styling only. The palette
+   tokens live in theme.toml [tokens]; the engine machinery AND the
+   layout-agnostic, token-driven look (typography, inline code, code blocks +
+   syntax tokens, tables) live in themes/base/base.css, which every theme
+   inherits. The layout/block geometry is in theme.toml. */
 
-/* Default tokens — a theme's [tokens] are emitted after this and win. */
-:root {
-  --bg: #0d1017;
-  --bg-2: #131722;
-  --fg: #e6e8ee;
-  --muted: #9aa5ce;
-  --accent: #7aa2f7;
-  --accent-2: #bb9af7;
-  --rule: #232838;
-  --frame: #000;            /* letterbox bar colour */
-  --stage-w: 1920;          /* design width  (drives stage aspect) */
-  --stage-h: 1080;          /* design height */
-  --pad: 8cqmin;
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+/* Typography refinement — base owns the token-driven scale; heading tracking is
+   a look choice this theme makes (base leaves it alone, so base-only themes
+   aren't fighting it). */
+h1 { letter-spacing: -0.02em; }
+h2 { letter-spacing: -0.01em; }
 
-  /* transition feel — overridable per theme or per slide */
-  --fx-dur: 0.45s;
-  --fx-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-
-/* Scheme overrides (manual — never auto-applied). */
-.slide.scheme-dark { --fg: #f5f7ff; --muted: #c4cce8; }
-.slide.scheme-light { --fg: #14161d; --muted: #4a5170; }
-
-/* --- Default typography (cqmin: % of the slide's smaller dimension) ---- */
-h1 { font-size: 7cqmin; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; }
-h2 { font-size: 4cqmin; font-weight: 500; color: var(--muted); letter-spacing: -0.01em; }
-h3 { font-size: 3cqmin; font-weight: 600; }
-p  { font-size: 2.6cqmin; }
-a  { color: var(--accent); }
-strong { color: var(--fg); font-weight: 700; }
-em { color: var(--accent-2); font-style: normal; }
-code { font-family: var(--mono); background: var(--bg-2); padding: 0.1em 0.35em; border-radius: 0.4cqmin; font-size: 0.9em; }
-
-/* --- Default per-layout alignment ------------------------------------- */
-.layout-bullets .block { justify-content: flex-start; }
-.layout-stat .block-head,
-.layout-two-col .block-head { justify-content: flex-end; }
-.layout-section, .layout-statement { text-align: center; }
-/* blocks default to top now, but a divider / big statement reads better centred */
-.layout-section .block, .layout-statement .block { align-items: center; justify-content: center; }
+/* --- Default per-layout look -------------------------------------------
+   Alignment (centred dividers/statements, bottom-aligned heads, centred stat
+   figures) now lives in theme.toml block data (align-x/align-y), not here. */
 .layout-section h1 { color: var(--accent); font-size: 6cqmin; }
 .layout-statement h1 { font-weight: 700; }
 
@@ -89,8 +57,6 @@ code { font-family: var(--mono); background: var(--bg-2); padding: 0.1em 0.35em;
 /* --- stat -------------------------------------------------------------- */
 /* A repeatable `figure` block per authored entry; the theme styles its
    Markdown — `**value**` becomes the big number, the rest is the label. */
-.layout-stat .block-head { text-align: left; }
-.layout-stat .block-figure { text-align: center; }
 .layout-stat .block-figure strong {
   display: block;
   font-size: 12cqmin;
@@ -105,76 +71,16 @@ code { font-family: var(--mono); background: var(--bg-2); padding: 0.1em 0.35em;
 .layout-stat .block-figure p { margin: 0; color: var(--muted); font-size: 2.4cqmin; }
 
 /* --- code -------------------------------------------------------------- */
+/* Generic `pre` + syntax tokens are in base.css; the layout bumps sizing. */
 .layout-code h1, .layout-code h2 { margin-bottom: 0.6em; }
-pre {
-  background: var(--bg-2);
-  border-radius: 1cqmin;
-  padding: 2.5cqmin;
-  overflow: auto;
-  line-height: 1.5;
-  font-family: var(--mono);
-  font-size: 2cqmin;
-  color: var(--fg);
-}
-pre code { background: none; padding: 0; border-radius: 0; font-size: inherit; color: inherit; font-family: var(--mono); }
 .layout-code pre { font-size: 1.9cqmin; padding: 3cqmin; }
 
-/* Syntax tokens — class-based (syntect, prefix `syn-`), coloured from theme
-   tokens so highlighting is theme-native and a theme can override it. */
-pre .syn-comment { color: var(--muted); font-style: italic; }
-pre .syn-keyword, pre .syn-storage { color: var(--accent); }
-pre .syn-string { color: var(--accent-2); }
-pre .syn-constant { color: var(--accent-2); }
-pre .syn-entity, pre .syn-support { color: var(--accent); }
-pre .syn-variable { color: var(--fg); }
-pre .syn-punctuation { color: var(--muted); }
-
-/* --- tables ------------------------------------------------------------ */
-table { width: 100%; border-collapse: collapse; font-size: 2.4cqmin; }
-th, td { padding: 0.55em 0.9em; text-align: left; vertical-align: top; }
-thead th { color: var(--fg); font-weight: 700; border-bottom: 0.25cqmin solid var(--rule); }
-tbody td { border-bottom: 0.12cqmin solid var(--rule); }
-tbody tr:last-child td { border-bottom: none; }
-/* respect Markdown column alignment (:--, --:, :--:) */
-th[align="center"], td[align="center"] { text-align: center; }
-th[align="right"], td[align="right"] { text-align: right; }
-th[align="left"], td[align="left"] { text-align: left; }
+/* --- table ------------------------------------------------------------- */
+/* Table styling + emphasis classes are in base.css; the layout frames one. */
 .layout-table h1, .layout-table h2 { margin-bottom: 0.6em; }
 .layout-table .block { justify-content: flex-start; }
 
-/* row-headers: first column styled as labels */
-.row-headers tbody td:first-child { font-weight: 700; color: var(--fg); }
-
-/* highlight a column (1–8): tinted background + accent header */
-.hl-col-1 tr > :nth-child(1) { background: var(--bg-2); }
-.hl-col-2 tr > :nth-child(2) { background: var(--bg-2); }
-.hl-col-3 tr > :nth-child(3) { background: var(--bg-2); }
-.hl-col-4 tr > :nth-child(4) { background: var(--bg-2); }
-.hl-col-5 tr > :nth-child(5) { background: var(--bg-2); }
-.hl-col-6 tr > :nth-child(6) { background: var(--bg-2); }
-.hl-col-7 tr > :nth-child(7) { background: var(--bg-2); }
-.hl-col-8 tr > :nth-child(8) { background: var(--bg-2); }
-.hl-col-1 thead > tr > :nth-child(1) { color: var(--accent); }
-.hl-col-2 thead > tr > :nth-child(2) { color: var(--accent); }
-.hl-col-3 thead > tr > :nth-child(3) { color: var(--accent); }
-.hl-col-4 thead > tr > :nth-child(4) { color: var(--accent); }
-.hl-col-5 thead > tr > :nth-child(5) { color: var(--accent); }
-.hl-col-6 thead > tr > :nth-child(6) { color: var(--accent); }
-.hl-col-7 thead > tr > :nth-child(7) { color: var(--accent); }
-.hl-col-8 thead > tr > :nth-child(8) { color: var(--accent); }
-
-/* highlight a body row (1–8) */
-.hl-row-1 tbody tr:nth-child(1) > * { background: var(--bg-2); }
-.hl-row-2 tbody tr:nth-child(2) > * { background: var(--bg-2); }
-.hl-row-3 tbody tr:nth-child(3) > * { background: var(--bg-2); }
-.hl-row-4 tbody tr:nth-child(4) > * { background: var(--bg-2); }
-.hl-row-5 tbody tr:nth-child(5) > * { background: var(--bg-2); }
-.hl-row-6 tbody tr:nth-child(6) > * { background: var(--bg-2); }
-.hl-row-7 tbody tr:nth-child(7) > * { background: var(--bg-2); }
-.hl-row-8 tbody tr:nth-child(8) > * { background: var(--bg-2); }
-
 /* --- compare ----------------------------------------------------------- */
-.layout-compare .block-head { justify-content: flex-end; text-align: center; }
 .layout-compare .block-left, .layout-compare .block-right {
   justify-content: flex-start;
   background: var(--bg-2);
@@ -186,8 +92,6 @@ th[align="left"], td[align="left"] { text-align: left; }
 .layout-compare li { margin: 0.4em 0; font-size: 2.4cqmin; }
 
 /* --- quote ------------------------------------------------------------- */
-.layout-quote .block-body { justify-content: center; }
-.layout-quote .block-body .fit { position: relative; }
 .layout-quote .block-body p {
   font-size: 5cqmin;
   font-weight: 600;

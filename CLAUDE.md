@@ -4,11 +4,12 @@
 slide decks, with PDF and PPTX export. Architecture & format live in
 [SPEC.md](SPEC.md); user docs in [README.md](README.md); the complete theming
 vocabulary is in [THEMING.md](THEMING.md). Keep these up to date when behaviour
-changes — in particular, **`THEMING.md` must track `themes/default/`** (`base.css`
-machinery + `theme.css` look + `theme.toml` layout vocabulary): if you add/rename
-a token, layout/template class, `block`/`block-*` hook, `syn-*` token, a default
-layout's blocks, or a chrome/fragment hook, update THEMING.md (and the theming
-skills reference it, so don't duplicate it).
+changes — in particular, **`THEMING.md` must track `themes/base/` + `themes/default/`**
+(`base/base.css` machinery + agnostic look, `base/base.toml` neutral token
+contract, `default/theme.css` per-layout look + `default/theme.toml` palette +
+core layout vocabulary): if you add/rename a token, layout/template class,
+`block`/`block-*` hook, `syn-*` token, a core layout's blocks, or a chrome/fragment
+hook, update THEMING.md (and the theming skills reference it, so don't duplicate it).
 
 ## Before committing (always)
 
@@ -58,13 +59,17 @@ use it as the smoke test / reference deck.
 - **The tool assembles; the browser renders.** We emit HTML + CSS; layout happens
   in the browser. PDF/PPTX drive headless Chrome over that same HTML — never
   reimplement layout for an export target.
-- **Themes restyle one stable vocabulary.** The `default` theme is the baseline
-  every theme inherits: `themes/default/base.css` (engine machinery),
-  `theme.css` (default look), `theme.toml` (layouts/blocks as data). Layouts and
-  templates are data (named **blocks** = grid rects + hints); themes override via
-  tokens + CSS. A block is *fixed* (theme `image`/`text`) or *editable*
-  (author-filled). Add a layout/template as data + CSS, not a new code path where
-  avoidable.
+- **Themes layer on a base substrate.** `themes/base/` is the engine substrate
+  emitted beneath every deck: `base.css` (machinery + a layout-agnostic,
+  token-driven look — typography, code, tables) + `base.toml` (a neutral token
+  contract + grid). base ships **no layouts**. A theme layers on base and may
+  `extends = "<other>"` to inherit that theme's tokens/layouts/templates/CSS;
+  with no `extends` it builds straight on base (owns its whole vocabulary). The
+  bundled `default` theme owns the core layout set; `bold`/`paper` extend it.
+  Layouts and templates are data (named **blocks** = grid rects + hints); themes
+  override via tokens + CSS. A block is *fixed* (theme `image`/`text`) or
+  *editable* (author-filled). Add a layout/template as data + CSS, not a new code
+  path where avoidable.
 - **Keep dependencies light.** Don't add crates without good reason.
 - **Output stays self-contained** (images/fonts inlined). Don't introduce remote
   runtime dependencies in generated decks.
@@ -76,7 +81,9 @@ use it as the smoke test / reference deck.
 repeat math) · `fragments.rs` ·
 `assets.rs` (data-URI inlining) · `pdf.rs` · `pptx.rs` · `watch.rs` (live-reload
 `watch` + two-window `present`) · `assets/runtime.js` (deck runtime: nav,
-fragments, transitions, scale-to-fit, presenter view — engine plumbing, not
-themeable) · `themes/` (bundled themes). The `default` theme — `themes/default/{base.css, theme.css,
-theme.toml}` — is the engine baseline (machinery + look + layout data), compiled
-in via `include_str!` and inherited by every theme.
+fragments, transitions, opt-in scale-to-fit, presenter view — engine plumbing,
+not themeable) · `themes/` (bundled themes). The substrate is `themes/base/`
+(`base.css` machinery + agnostic look, `base.toml` token contract + grid) and the
+bundled `themes/default/` (`theme.css` per-layout look, `theme.toml` palette +
+core layouts); both compiled in via `include_str!`. Themes layer on base and opt
+into a parent via `extends`.

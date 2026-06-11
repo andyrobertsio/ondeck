@@ -165,6 +165,20 @@ highlight-col: 3
 | SSO       | —    | —    | ✓    |
 
 ---
+layout: table
+table-spacing: comfortable
+table-style: stripes
+---
+# Roadmap
+
+| Quarter | Theme        | Status      |
+| ------- | ------------ | ----------- |
+| Q1      | Onboarding   | Shipped     |
+| Q2      | Billing      | In progress |
+| Q3      | Mobile       | Planned     |
+| Q4      | Enterprise   | Planned     |
+
+---
 layout: image
 fit: full
 ---

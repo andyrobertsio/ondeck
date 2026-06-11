@@ -1,7 +1,9 @@
 name = "paper"
+extends = "default"
 
-# A light, editorial theme. It inherits all structure, layouts, and default
-# styling from base.css — and only overrides tokens + a few rules (theme.css).
+# A light, editorial theme. It inherits the core layouts + default styling from
+# the `default` theme (and the engine look from base), overriding only tokens +
+# a few rules (theme.css).
 [tokens]
 bg = "#faf7f0"
 bg-2 = "#ece5d8"

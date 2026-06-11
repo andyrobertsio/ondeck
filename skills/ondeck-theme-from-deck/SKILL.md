@@ -73,8 +73,9 @@ then proceed as above.
 
 ## Then: build and match
 
-1. Create `themes/<name>/` with the extracted tokens (and a self-hosted font if
-   you have one) per the **ondeck-theme** skill.
+1. Create `themes/<name>/` with `extends = "default"` and the extracted tokens
+   (and a self-hosted font if you have one) per the **ondeck-theme** skill — a
+   brand recolour is a standard theme, so it inherits `default`'s layouts.
 2. Build the demo deck with it: `ondeck build examples/demo.md --theme <name> -o /tmp/t.html`.
 3. **Compare side by side with the reference.** Screenshot the demo's title,
    bullets, stat, and a content slide, and put them next to the source slides.

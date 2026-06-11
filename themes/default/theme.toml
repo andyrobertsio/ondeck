@@ -1,5 +1,16 @@
 name = "default"
 
+# The blue palette — overrides base's neutral token contract. Structural tokens
+# (frame, stage size, fonts, pad, transition feel) are inherited from base.
+[tokens]
+bg       = "#0d1017"
+bg-2     = "#131722"
+fg       = "#e6e8ee"
+muted    = "#9aa5ce"
+accent   = "#7aa2f7"
+accent-2 = "#bb9af7"
+rule     = "#232838"
+
 # `default` is the built-in baseline, compiled into the binary. It defines the
 # engine's layout vocabulary as data (below); its look lives in `theme.css` and
 # the engine machinery in `base.css`, both alongside this file. Every other theme
@@ -15,13 +26,13 @@ name = "default"
 body = { at = "x7 y11 x56 y26" }
 
 [layout.section.blocks]
-body = { at = "x7 y13 x58 y24" }
+body = { at = "x7 y13 x58 y24", align-x = "center", align-y = "center" }
 
 [layout.bullets.blocks]
 body = { at = "x7 y5 x58 y32" }
 
 [layout.statement.blocks]
-body = { at = "x9 y9 x56 y28" }
+body = { at = "x9 y9 x56 y28", align-x = "center", align-y = "center" }
 
 [layout.code.blocks]
 body = { at = "x7 y5 x58 y32" }
@@ -30,16 +41,16 @@ body = { at = "x7 y5 x58 y32" }
 body = { at = "x5 y5 x60 y32" }
 
 [layout.quote.blocks]
-body = { at = "x9 y9 x56 y24" }
+body = { at = "x9 y9 x56 y24", align-y = "center" }
 cite = { at = "x9 y25 x56 y30" }
 
 [layout.two-col.blocks]
-head  = { at = "x7 y5 x58 y10" }
+head  = { at = "x7 y5 x58 y10", align-y = "bottom" }
 left  = { at = "x7 y13 x30 y32" }
 right = { at = "x35 y13 x58 y32" }
 
 [layout.compare.blocks]
-head  = { at = "x7 y5 x58 y10" }
+head  = { at = "x7 y5 x58 y10", align-x = "center", align-y = "bottom" }
 left  = { at = "x7 y13 x30 y32" }
 right = { at = "x35 y13 x58 y32" }
 
@@ -52,8 +63,8 @@ body  = { at = "x37 y7 x60 y30" }
 # stat: a heading and a repeatable figure that flows right, centred so partial
 # counts sit in the middle.
 [layout.stat.blocks]
-head   = { at = "x7 y5 x58 y10" }
-figure = { at = "x7 y13 x18 y26", repeatable = true, repeatable-direction = "right", repeatable-margin = 2, repeatable-limit = 4, repeatable-align = "center" }
+head   = { at = "x7 y5 x58 y10", align-y = "bottom" }
+figure = { at = "x7 y13 x18 y26", align-x = "center", repeatable = true, repeatable-direction = "right", repeatable-margin = 2, repeatable-limit = 4, repeatable-align = "center" }
 
 # image / raw fill the whole stage and render outside the grid.
 [layout.image.blocks]

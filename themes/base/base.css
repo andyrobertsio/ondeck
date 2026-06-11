@@ -1,8 +1,11 @@
-/* base.css — the engine MACHINERY, emitted before every theme. Structural only:
-   the fixed-aspect stage, the slide, the cols×rows grid, the `.block` primitive
-   (positioning + layer/align/fit mechanics), transitions, fragments, chrome
-   placement, and print/shot. The *look* (palette, typography, per-layout
-   styling) lives in this theme's `theme.css`, which every theme also inherits.
+/* base.css — the engine substrate, emitted before every theme. Two parts:
+   (1) MACHINERY: the fixed-aspect stage, the slide, the cols×rows grid, the
+   `.block` primitive (positioning + layer/align/fit mechanics), transitions,
+   fragments, chrome placement, and print/shot. (2) A LAYOUT-AGNOSTIC,
+   token-driven LOOK (typography, inline code, code blocks + syntax tokens,
+   tables): it reads only tokens and targets no specific layout, so it holds
+   for any theme — including one built straight on base. Per-layout aesthetics
+   (and the palette tokens themselves) live in a theme's theme.css / theme.toml.
 
    Sizing uses container-query units (cqmin/cqw/cqh) resolved against the slide
    (a fixed-aspect container), so everything scales with the stage — the
@@ -16,7 +19,7 @@ html, body {
   color: var(--fg);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
-  line-height: 1.45;
+  line-height: var(--leading);
 }
 
 /* The deck fills the viewport and centres the stage (letterbox bars = --frame). */
@@ -47,6 +50,9 @@ html, body {
   display: none;
   overflow: hidden;
   background-color: var(--bg);
+  /* Re-resolve text colour here so a per-slide --fg override (scheme:, or a
+     template/layout token override) actually flips inherited text. */
+  color: var(--fg);
   background-size: cover;
   background-position: center;
   container-type: size; /* block content + type size against the slide */
@@ -91,12 +97,16 @@ html, body {
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;   /* align-y: top (default; main axis = vertical) */
+  justify-content: flex-start;   /* align-y: top  (default; main axis = vertical) */
+  align-items: flex-start;       /* align-x: left (default; cross axis = horizontal) */
+  text-align: left;
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
+  overflow: hidden;              /* content is authored to fit; overflow clips */
 }
 .block .fit { transform-origin: center center; width: 100%; }
+/* Content images never blow out their block, even without an explicit fit. */
+.block img { max-width: 100%; height: auto; }
 
 /* Layer (z-stack within .slide-content): behind → main → front. */
 .block.layer-behind { z-index: 0; }
@@ -104,10 +114,10 @@ html, body {
 
 /* Alignment hooks (the default value on each axis emits no class): align-y on
    the main/vertical axis defaults to top; align-x on the cross axis (plus
-   text-align) defaults to center. */
+   text-align) defaults to left. The block itself carries the top-left default. */
 .block.ay-center { justify-content: center; }
 .block.ay-end    { justify-content: flex-end; }
-.block.ax-start  { align-items: flex-start; text-align: left; }
+.block.ax-center { align-items: center;   text-align: center; }
 .block.ax-end    { align-items: flex-end; text-align: right; }
 
 /* Fit modes for media content (an `<img>` from Markdown). `scale` uses `.fit`. */
@@ -226,6 +236,103 @@ body.presenter .presenter-view {
 @media (prefers-reduced-motion: reduce) {
   .fragment { transition-duration: 0.001s; transform: none; filter: none; }
 }
+
+/* === Layout-agnostic, token-driven look ================================
+   These read only tokens (never a literal palette) and target no specific
+   layout, so they hold for ANY theme — including one built straight on base
+   with no `extends`. Per-layout aesthetics live in a theme's theme.css. */
+
+/* Scheme overrides (manual — never auto-applied): remap text for legibility
+   over a custom background. A theme overrides these if its palette needs to. */
+.slide.scheme-dark { --fg: #f5f7ff; --muted: #c4cce8; }
+.slide.scheme-light { --fg: #14161d; --muted: #4a5170; }
+
+/* Typography. Sizes/weights/leading are tokens (see base.toml) so a theme
+   retunes the scale by setting `--h1-size`, `--h2-weight`, `--leading`, … with
+   no CSS override. (Letter-spacing is a look choice, left to the theme.) */
+h1 { font-size: var(--h1-size); font-weight: var(--h1-weight); line-height: var(--h1-leading); }
+h2 { font-size: var(--h2-size); font-weight: var(--h2-weight); color: var(--muted); line-height: var(--h2-leading); }
+h3 { font-size: var(--h3-size); font-weight: var(--h3-weight); line-height: var(--h3-leading); }
+p  { font-size: var(--p-size); line-height: var(--p-leading); }
+a  { color: var(--accent); }
+strong { color: var(--fg); font-weight: 700; }
+em { color: var(--accent-2); font-style: normal; }
+code { font-family: var(--mono); background: var(--bg-2); padding: 0.1em 0.35em; border-radius: calc(var(--radius) * 0.4); font-size: 0.9em; }
+
+/* Code blocks. The `code` *layout* bumps sizing in its own theme.css. */
+pre {
+  background: var(--bg-2);
+  border-radius: var(--radius);
+  padding: var(--code-pad);
+  overflow: auto;
+  line-height: var(--code-leading);
+  font-family: var(--mono);
+  font-size: var(--code-size);
+  color: var(--fg);
+}
+pre code { background: none; padding: 0; border-radius: 0; font-size: inherit; color: inherit; font-family: var(--mono); }
+
+/* Syntax tokens — class-based (syntect, prefix `syn-`), coloured from tokens
+   so highlighting is theme-native and a theme can override it. */
+pre .syn-comment { color: var(--muted); font-style: italic; }
+pre .syn-keyword, pre .syn-storage { color: var(--accent); }
+pre .syn-string { color: var(--accent-2); }
+pre .syn-constant { color: var(--accent-2); }
+pre .syn-entity, pre .syn-support { color: var(--accent); }
+pre .syn-variable { color: var(--fg); }
+pre .syn-punctuation { color: var(--muted); }
+
+/* Tables — styled from tokens so they work in any layout (the `table` layout
+   just frames one as the slide's focus). */
+table { width: 100%; border-collapse: collapse; font-size: var(--table-size); line-height: var(--table-leading); }
+th, td { padding: var(--cell-pad-y) var(--cell-pad-x); text-align: left; vertical-align: top; }
+thead th { color: var(--fg); font-weight: 700; border-bottom: 0.25cqmin solid var(--rule); }
+tbody td { border-bottom: var(--table-rule-width) solid var(--rule); }
+tbody tr:last-child td { border-bottom: none; }
+/* respect Markdown column alignment (:--, --:, :--:) */
+th[align="center"], td[align="center"] { text-align: center; }
+th[align="right"], td[align="right"] { text-align: right; }
+th[align="left"], td[align="left"] { text-align: left; }
+
+/* row-headers: first column styled as labels */
+.row-headers tbody td:first-child { font-weight: 700; color: var(--fg); }
+
+/* Table variants (per-slide `table-spacing:` / `table-style:` → slide classes).
+   Spacing just remaps the cell-pad tokens; style toggles row/border treatment.
+   `default` spacing and `lines` style are the no-class defaults. */
+.slide.table-compact     { --cell-pad-y: 0.3em;  --cell-pad-x: 0.6em; }
+.slide.table-comfortable { --cell-pad-y: 0.85em; --cell-pad-x: 1.15em; }
+.slide.table-stripes tbody tr:nth-child(even) > * { background: var(--bg-2); }
+.slide.table-borders :is(th, td) { border: var(--table-rule-width) solid var(--rule); }
+.slide.table-none :is(th, td) { border: none; }
+
+/* highlight a column (1–8): tinted background + accent header */
+.hl-col-1 tr > :nth-child(1) { background: var(--bg-2); }
+.hl-col-2 tr > :nth-child(2) { background: var(--bg-2); }
+.hl-col-3 tr > :nth-child(3) { background: var(--bg-2); }
+.hl-col-4 tr > :nth-child(4) { background: var(--bg-2); }
+.hl-col-5 tr > :nth-child(5) { background: var(--bg-2); }
+.hl-col-6 tr > :nth-child(6) { background: var(--bg-2); }
+.hl-col-7 tr > :nth-child(7) { background: var(--bg-2); }
+.hl-col-8 tr > :nth-child(8) { background: var(--bg-2); }
+.hl-col-1 thead > tr > :nth-child(1) { color: var(--accent); }
+.hl-col-2 thead > tr > :nth-child(2) { color: var(--accent); }
+.hl-col-3 thead > tr > :nth-child(3) { color: var(--accent); }
+.hl-col-4 thead > tr > :nth-child(4) { color: var(--accent); }
+.hl-col-5 thead > tr > :nth-child(5) { color: var(--accent); }
+.hl-col-6 thead > tr > :nth-child(6) { color: var(--accent); }
+.hl-col-7 thead > tr > :nth-child(7) { color: var(--accent); }
+.hl-col-8 thead > tr > :nth-child(8) { color: var(--accent); }
+
+/* highlight a body row (1–8) */
+.hl-row-1 tbody tr:nth-child(1) > * { background: var(--bg-2); }
+.hl-row-2 tbody tr:nth-child(2) > * { background: var(--bg-2); }
+.hl-row-3 tbody tr:nth-child(3) > * { background: var(--bg-2); }
+.hl-row-4 tbody tr:nth-child(4) > * { background: var(--bg-2); }
+.hl-row-5 tbody tr:nth-child(5) > * { background: var(--bg-2); }
+.hl-row-6 tbody tr:nth-child(6) > * { background: var(--bg-2); }
+.hl-row-7 tbody tr:nth-child(7) > * { background: var(--bg-2); }
+.hl-row-8 tbody tr:nth-child(8) > * { background: var(--bg-2); }
 
 /* --- print / PDF ------------------------------------------------------- */
 @page { size: 1920px 1080px; margin: 0; }

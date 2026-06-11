@@ -127,8 +127,8 @@ on-screen view *is* the design, just scaled. Sizing uses **container-query units
 (`cqmin`/`cqw`/`cqh`) resolved against the slide (a `container-type: size`
 element), so type and spacing track the stage rather than the raw window. This is
 pure CSS (no JS resize handler), so a theme can override the aspect/size/frame.
-The design size also drives the PDF `@page`. The `.fit` overflow scaler still
-runs as a JS safety net.
+The design size also drives the PDF `@page`. (A block can opt into JS
+scale-to-fit via `fit: scale`; it is no longer the default — see Overflow.)
 
 ## Grid & layout engine
 
@@ -140,9 +140,11 @@ overridable per theme. Margins come from the rects, not slide padding. Rendering
 one generic grid means adding a layout is data, not a new code path.
 
 A block is **fixed** when the theme gives it content (`image`/`text`) and
-**editable** otherwise (the author fills it). A **template** is a named bundle of
-fixed furniture blocks (logo, watermark); a layout selects a template (or the
-deck's `default` one) and renders its furniture *plus* the layout's own blocks.
+**editable** otherwise (the author fills it). Blocks default to **top-left**
+(`align-y: top`, `align-x: left`), overridable per block. A **template** is a
+named bundle of fixed furniture blocks (logo, watermark); a layout selects a
+template (or the deck's `default` one) and renders its furniture *plus* the
+layout's own blocks.
 
 ```css
 .slide-content { display:grid;
@@ -163,11 +165,13 @@ But for a bespoke slide:
 - `:::block at="x3 y9 x16 y12"` — place a block from cell (col 3,row 9) to
   (col 16,row 12), inclusive, on the 64×36 grid.
 
-**Overflow policy: scale-to-fit with a clip backstop.** A block's `fit:scale`
-content is uniformly transform-scaled down until it fits its cell (works
-regardless of font unit); `overflow:hidden` clips only if it hits the floor. A
-fixed fine grid stays pleasant instead of brittle, and content is never silently
-destroyed. We do not auto-reflow or second-guess placement.
+**Overflow policy: author to fit; clip the rest.** By default (`fit: none`) a
+block's content flows naturally and is **clipped** (`overflow:hidden`) if it
+exceeds the cell — the engine never auto-scales or reflows. A block can opt into
+scale-to-fit with **`fit: scale`** (wrap in `.fit`, transform-scale down until it
+fits — the JS scaler still ships for this), or `cover`/`contain` for media. This
+keeps a fixed fine grid honest and predictable; sizing in `cqmin` tracks the
+stage. We do not second-guess placement.
 
 ## Layout vocabulary (core set)
 
@@ -205,6 +209,8 @@ is repeatable (`limit` 4, centred), so 2–4 figures Just Work.
 | `scheme` | `light` \| `dark` | Text treatment override. **Manual only** — we never auto-detect contrast |
 | `highlight-col` / `highlight-row` | `1`–`8` | Emphasize a table column/row (tinted + accent) |
 | `row-headers` | `true` | Style a table's first column as labels |
+| `table-spacing` | `default` \| `compact` \| `comfortable` | Table cell density (remaps cell-pad tokens) |
+| `table-style` | `lines` \| `stripes` \| `borders` \| `none` | Table row/border treatment |
 
 ## Fragments (incremental reveal)
 
@@ -282,7 +288,8 @@ themes/<name>/
 
 ```toml
 # theme.toml
-name = "default"
+name = "my-theme"
+extends = "default"           # inherit a theme first (optional; omitted = base-only)
 [grid]
 cols = 64
 rows = 36
@@ -305,38 +312,47 @@ themes restyle one vocabulary. A block is fixed when it has `image`/`text`, else
 editable; `repeatable = true` makes it a per-entry stamp.
 
 **Block properties:** `at` (required), `image`/`text` (content → fixed),
-`layer` (`front`|`behind`), `opacity`, `align-x`/`align-y`, `fit`
-(`scale`|`cover`|`contain`), `transition`, and `repeatable` + `repeatable-direction`/
-`-margin`/`-limit`/`-align`. A layout selects furniture via `template = "<name>"`
-or `template = "none"`; with neither, it inherits the deck's `default` template.
+`layer` (`front`|`behind`), `opacity`, `align-x`/`align-y` (default top-left),
+`fit` (`none`*default*|`scale`|`cover`|`contain`), `transition`, and `repeatable`
++ `repeatable-direction`/`-margin`/`-limit`/`-align`. An `image` block renders as
+a CSS background, positioned by `align-x`/`align-y` and sized by `fit` (or an
+explicit `image-size`). A layout selects furniture via `template = "<name>"` or
+`template = "none"`; with neither, it inherits the deck's `default` template. A
+template or layout may also carry a `[…tokens]` table — token overrides scoped to
+slides using it (`.template-<name>`/`.layout-<name>`), so a dark-mode template
+flips `bg`/`fg` as data instead of a CSS rule (layout tokens win over template).
 
-**Validation:** at most one `default` template; `at` required; a block can't be
-both fixed and `repeatable`; a layout can't name a template that doesn't exist;
-a block name can't appear in both a layout and its template.
+**Validation:** at most one `default` template per theme; `at` required; a block
+can't be both fixed and `repeatable`; a layout can't name a template that doesn't
+exist; a block name can't appear in both a layout and its template.
 
-**Inheritance — a theme only writes overrides.** The baseline is the built-in
-**`default` theme** (`themes/default/`, compiled into the binary), which every
-theme inherits:
+**Substrate + inheritance — a theme writes overrides on a base.** The substrate
+is **`base`** (`themes/base/`, compiled in), emitted beneath every deck:
 - `base.css` — engine **machinery** (stage, slide, grid, the `.block` primitive,
-  transitions, fragments, print). Structural.
-- `theme.css` — the default **look**: `:root` tokens + typography + per-layout
-  styling.
-- `theme.toml` — the engine's layout/block vocabulary **as data** (no templates;
-  furniture is theme-only).
+  transitions, fragments, print) **plus a layout-agnostic, token-driven look**
+  (typography, inline code, code blocks + `syn-*`, tables). Structural.
+- `base.toml` — a **neutral token contract** (every token, neutral values) + the
+  default **grid**. base ships **no layouts**.
 
-A theme inherits all of it. The CSS cascade is `base.css` → `default/theme.css`
-→ theme `[tokens]` (override the `:root` defaults) → theme `theme.css` (overrides
-everything). Layouts start from `default/theme.toml`; a theme's `[layout.*]` may
-override its `template` and/or replace its `blocks`. `theme.css` is optional. So a
-minimal theme is `name = "…"` plus a few
-tokens. Reference themes: **`default`** (the baseline — machinery + look + layout
-data),
-**`paper`** (token overrides + a 3-rule `theme.css` → light editorial), and
-**`bold`** (electric high-contrast keynote).
+A theme layers on base, and may **`extends = "<other>"`** to inherit that theme's
+tokens, layouts, templates, and CSS first. The CSS cascade is `base.css` → base
+`[tokens]` → for each theme in the `extends` chain (root → leaf) its `[tokens]`
+then its `theme.css`. Layouts/templates/tokens merge by name down the chain
+(child wins); grid + default transition take the last set. With no `extends` a
+theme builds straight on base and owns its **whole** layout vocabulary; with
+`extends = "default"` it inherits the core layouts and overrides selectively.
+`theme.css` is optional, so a minimal theme is `name` + `extends` + a few tokens.
 
-**Theme resolution** (`Theme::load`): a built-in name (`default`, embedded in
-the binary), a directory path, or a name under `./themes/`. Selected by the
-`--theme` flag, else the deck's `theme:` frontmatter, else `default`.
+Reference themes: the substrate **`base`**; the bundled **`default`** (palette +
+the core layout vocabulary + per-layout look; the common `extends` target);
+**`paper`** (`extends = "default"`, token overrides + a 3-rule `theme.css` →
+light editorial); **`bold`** (`extends = "default"`, electric high-contrast
+keynote).
+
+**Theme resolution** (`Theme::load`): a built-in name (`default`/`base`, embedded
+in the binary), a directory path, or a name under `./themes/`. Selected by the
+`--theme` flag, else the deck's `theme:` frontmatter, else `default`. `extends`
+targets resolve the same way; chains are followed with cycle detection.
 
 Slide-content images (content + backgrounds) are inlined as base64 data URIs
 (`--no-inline` opts out). A theme's own CSS assets (background images, self-hosted
@@ -359,9 +375,12 @@ Remote assets (e.g. a Google Fonts `@import`) are not fetched.
 - Grid engine (size from theme); layouts as data-driven slot tables.
 - **Themes as TOML** (tokens + grid + layout rects) + CSS; loaded from a built-in
   name, a directory path, or `./themes/`; selected via `--theme` or frontmatter.
-- **Theme inheritance**: the built-in `default` theme (`themes/default/`:
-  `base.css` machinery + `theme.css` look + `theme.toml` layout data) is compiled
-  in and inherited by every theme, which only writes overrides.
+- **Substrate + `extends` inheritance**: the built-in `base` substrate
+  (`themes/base/`: `base.css` machinery + agnostic look, `base.toml` neutral
+  token contract + grid; no layouts) is compiled in and emitted beneath every
+  deck. A theme layers on base and may `extends = "<other>"` to inherit its
+  tokens/layouts/templates/CSS (chains followed, cycle-detected). The bundled
+  `default` theme owns the core layouts; `bold`/`paper` extend it.
 - Layouts: `title`, `section`, `bullets`, `statement`, `quote`, `two-col`,
   `media-split`, `stat` (repeatable figures), `compare`, `code`, `table`, `image`,
   `raw`, `free`. Themed Markdown tables with column/row/row-header emphasis.
@@ -370,12 +389,13 @@ Remote assets (e.g. a Google Fonts `@import`) are not fetched.
 - Fixed-aspect **stage** (1920×1080 / 16:9 default) with letterbox; pure-CSS
   container-unit scaling; square 64×36 grid; theme-overridable aspect/size.
 - Deck chrome (frontmatter toggles): `slide-numbers`, `progress`, `footer`.
-- Three reference themes: `default`, `paper`, `bold`.
+- Reference themes: substrate `base`; bundled `default` (core layouts); `paper`
+  and `bold` (both `extends = "default"`).
 - `ondeck watch` (live-reload server) + `ondeck build --open`.
 - **Presenter view**: two-window audience + notes/preview dashboard, synced via
   `postMessage`/`BroadcastChannel`; `P` opens it, `F` fullscreen; `ondeck present`
   serves both windows over http (Markdown or prebuilt `.html`).
-- Test suite (`cargo test`): parser, grid, fragments, theme, render (36 tests).
+- Test suite (`cargo test`): parser, grid, fragments, theme, render (40 tests).
 - `free` layout + `at="…"` coordinate escape hatch (any slot may override).
 - Code highlighting at build via syntect, emitted as **theme-coloured CSS
   classes** (`syn-*`) — no client JS, and overridable per theme.
@@ -384,7 +404,8 @@ Remote assets (e.g. a Google Fonts `@import`) are not fetched.
   print force-reveal.
 - **Slide transitions** (`slide-transition:` deck/per-slide; `none`/`fade`/`slide`,
   directional, default `none`).
-- Scale-to-fit overflow with clip backstop (runs on slide activation).
+- Overflow: natural flow + clip by default; opt-in `fit: scale` scale-to-fit
+  (runs on slide activation), `cover`/`contain` for media.
 - Per-slide `background` (color/gradient/`var()`/image path), `scheme`,
   `background-overlay`, `fit` (image); hidden `::: notes`.
 - **Image inlining**: content (`<img>`) and background (`url(…)`) images are

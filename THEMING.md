@@ -30,25 +30,43 @@ A theme is a directory:
 
 ```
 themes/<name>/
-  theme.toml   # tokens, grid, optional layout overrides   (required)
-  theme.css    # CSS overrides on the base stylesheet       (optional)
+  theme.toml   # name, optional extends, tokens, grid, templates, layouts  (required)
+  theme.css    # CSS overrides                                             (optional)
 ```
 
-The baseline is the built-in **`default` theme** in `themes/default/`, compiled
-into the binary. Every theme inherits it:
+The substrate is **`base`** (`themes/base/`, compiled into the binary), emitted
+beneath every deck:
 - `base.css` — engine **machinery** (stage, slide, grid, the `.block` primitive,
-  transitions, fragments, print). Structural; you rarely touch it.
-- `theme.css` — the default **look** (palette tokens, typography, per-layout
-  styling). This is the kind of thing your theme overrides.
-- `theme.toml` — the engine's **layout/block vocabulary** as data.
+  transitions, fragments, print) **plus a layout-agnostic, token-driven look**
+  (typography, inline code, code blocks + `syn-*` tokens, tables). It reads only
+  tokens and targets no specific layout, so it holds for any theme. Structural;
+  you rarely touch it.
+- `base.toml` — a **neutral token contract** (every token, neutral greyscale
+  values) + the default **grid** (64×36). base ships **no layouts**.
 
-A theme overrides only what it names — so it can be as small as `name = "x"` plus
-a handful of tokens.
+A deck on base alone is plain but coherent. **Themes bring colour and layouts**,
+and a theme may inherit another with `extends`:
 
-**Cascade order:** `base.css` (machinery) → `default/theme.css` (default look) →
-your `[tokens]` (override the `:root` defaults) → your `theme.css` (overrides
-everything). **Layouts:** start from `default/theme.toml`'s definitions; your
-`[layout.*]` overrides a layout's `template` and/or its `blocks`.
+```toml
+name = "my-theme"
+extends = "default"   # inherit default's tokens, layouts, templates, CSS first
+```
+
+- **`extends = "default"`** — start from the bundled `default` theme (the core
+  layout vocabulary: `title`, `bullets`, `two-col`, `stat`, …, plus its look),
+  then override. This is the common case — your theme can be `name` + `extends` +
+  a few tokens. `bold` and `paper` work this way.
+- **No `extends` (or `extends = "base"`)** — build straight on base. You inherit
+  the engine machinery + agnostic look, but **no layouts** — your theme owns its
+  whole vocabulary. Use this for a bespoke design system (see `apollo`).
+
+`extends` may name a built-in, a path, or a `./themes/` name; chains are followed
+(with cycle detection).
+
+**Cascade order:** `base.css` → base `[tokens]` → for each theme in the `extends`
+chain (root → leaf): its `[tokens]` then its `theme.css` → so the theme you load
+wins. **Layouts/templates/tokens** merge by name down the chain (child wins);
+**grid** and the default **transition** take the last one set.
 
 **Resolution:** a theme is selected by `--theme <spec>` or a deck's `theme:`
 frontmatter (flag wins). `<spec>` is a built-in name (`default`), a directory
@@ -58,9 +76,10 @@ path, or a name under `./themes/`. Built-ins: `default`, `paper`, `bold`.
 
 ```toml
 name = "my-theme"            # display name
+extends = "default"          # inherit a theme first (optional; omitted = base-only)
 transition = "fade-up"       # default fragment transition (optional)
 
-[grid]                       # optional; defaults to 64×36
+[grid]                       # optional; inherited (ultimately base's 64×36)
 cols = 64
 rows = 36
 
@@ -87,8 +106,11 @@ body = { at = "x7 y5 x56 y32" }   # `at` = "x{c1} y{r1} x{c2} y{r2}", inclusive 
 ## Tokens
 
 Every token is a CSS variable consumed by the base stylesheet, so changing one
-restyles every layout at once. Defaults below are the engine values (the
-`default` look).
+restyles every layout at once. **`base.toml` defines the full token contract**
+with neutral (greyscale) values, so any theme — even a base-only one — resolves
+to a complete set. The values below are the **`default` theme's** palette (what
+you get with `extends = "default"` or `--theme default`); a base-only theme sees
+base's neutral values until it sets its own.
 
 | Token | Default | Controls |
 |---|---|---|
@@ -100,6 +122,16 @@ restyles every layout at once. Defaults below are the engine values (the
 | `accent-2` | `#bb9af7` | Secondary accent: `em`, stat gradient end, string tokens |
 | `rule` | `#232838` | Hairlines, the progress-bar track |
 | `frame` | `#000` | Letterbox bar colour around the stage (also per-deck via `frame:` frontmatter) |
+| `h1-size` / `h2-size` / `h3-size` | `7` / `4` / `3` `cqmin` | Heading font sizes (the type scale) |
+| `p-size` | `2.6cqmin` | Body paragraph font size |
+| `code-size` / `table-size` | `2` / `2.4` `cqmin` | Code-block and table font sizes |
+| `h1-weight` / `h2-weight` / `h3-weight` | `700` / `500` / `600` | Heading font weights |
+| `leading` | `1.45` | Master line-height; body / h2 / h3 / p / table track it |
+| `h1-leading` / `code-leading` | `1.05` / `1.5` | Line-height for headings / code blocks (others = `leading`) |
+| `code-pad` | `2.5cqmin` | Code-block padding |
+| `cell-pad-y` / `cell-pad-x` | `0.55em` / `0.9em` | Table cell padding (the `table-spacing` variants remap these) |
+| `table-rule-width` | `0.12cqmin` | Table row hairline / `table-style: borders` weight |
+| `radius` | `1cqmin` | Corner radius unit (code blocks; inline `code` uses 0.4×) |
 | `pad` | `8cqmin` | Padding unit used by the media-split body |
 | `font` | system sans stack | Main font (`font-family`) |
 | `mono` | system mono stack | Code/monospace font |
@@ -107,6 +139,14 @@ restyles every layout at once. Defaults below are the engine values (the
 | `stage-h` | `1080` | Design height |
 | `fx-dur` | `0.45s` | Transition duration (fragments + slides + progress bar) |
 | `fx-ease` | `cubic-bezier(0.2,0.7,0.2,1)` | Transition easing |
+
+So you can **retune typography from `[tokens]`** with no `theme.css` — heavier
+headings is `h1-weight = "800"`, looser body is `leading = "1.6"`, etc. Each
+element also has its own leading token (`h2-leading`, `h3-leading`, `p-leading`,
+`table-leading`) defaulting to `var(--leading)`, so you can override one in
+isolation. **Letter-spacing** is *not* a base token — base leaves tracking alone;
+the bundled `default` theme sets `h1`/`h2` tracking in its `theme.css`, so set it
+there (or in your own `theme.css`) if you want it.
 
 `--cols` / `--rows` are emitted from `[grid]` (defaults 64/36) and drive the
 slide grid.
@@ -136,19 +176,37 @@ Every block needs `at`; the rest are optional. Set on any block in a
 | Property | Values | Default | Meaning |
 |---|---|---|---|
 | `at` | `"x{c1} y{r1} x{c2} y{r2}"` | **required** | Grid placement, inclusive cells |
-| `image` | `url('…')` | — | Image content (inlined against the theme dir) → **fixed** |
+| `image` | `url('…')` | — | Image content, rendered as a CSS background (inlined against the theme dir) → **fixed**. Place it with `align-x`/`align-y` + `fit` (below) |
 | `text` | Markdown string | — | Text content → **fixed** |
 | `layer` | `front` \| `behind` | `front` (fixed) | Stack vs main content (`.block.layer-*`) |
 | `opacity` | `0`–`1` | `1` | Block opacity (e.g. a faint watermark) |
-| `align-x` | `left` \| `center` \| `right` | `center` | Horizontal alignment (`.block.ax-*`) |
-| `align-y` | `top` \| `center` \| `bottom` | `top` | Vertical alignment (`.block.ay-center`/`.ay-end`) |
-| `fit` | `scale` \| `cover` \| `contain` | `scale` | Content sizing (`.block.fit-*`) |
+| `align-x` | `left` \| `center` \| `right` | `left` | Horizontal alignment (`.block.ax-center`/`.ax-end`). On an `image` block → `background-position` X |
+| `align-y` | `top` \| `center` \| `bottom` | `top` | Vertical alignment (`.block.ay-center`/`.ay-end`). On an `image` block → `background-position` Y |
+| `fit` | `none` \| `scale` \| `cover` \| `contain` | `none` | Content sizing (`.block.fit-*`); see [Overflow](#overflow). On an `image` block → `background-size` (`cover` crops, else `contain`) |
+| `image-size` | any CSS `background-size` (`80%`, `4cqmin`, `auto`, …) | — | `image` blocks only: explicit `background-size`, overriding `fit`'s shorthand |
 | `transition` | a fragment fx name | theme/slide default | Fragment transition for this block's content |
 | `repeatable` | `true` \| `false` | `false` | A per-entry stamp (editable only) |
 | `repeatable-direction` | `up`\|`down`\|`left`\|`right` | `down` | Flow direction of copies |
 | `repeatable-margin` | integer (cells) | `0` | Gap between copies |
 | `repeatable-limit` | integer | — | Max copies; extras dropped |
 | `repeatable-align` | `start`\|`center`\|`end` | `start` | Position copies within the limit-sized track |
+
+### Overflow
+
+Blocks default to **top-left** (`align-y: top`, `align-x: left`) and content
+flows **naturally** (`fit: none`): you author it to fit, and anything that
+doesn't is **clipped** (`overflow: hidden`) — the engine does **not** auto-scale.
+A content `<img>` is capped at the block width so it can't blow out.
+
+Opt a block into other sizing with `fit`:
+- `scale` — wrap the content in `.fit` and shrink it uniformly until it fits
+  (the old default; useful for a block that must never overflow whatever the
+  content length).
+- `cover` / `contain` — for media: size an `<img>` to fill (cropping) or fit the
+  cell.
+
+So "make this big text always fit" is now a deliberate `fit = "scale"`, not the
+default. Size type in `cqmin` so it tracks the stage.
 
 ### Templates (fixed furniture)
 
@@ -187,6 +245,32 @@ trick on its `.block-<name>`:
 > is all-or-nothing per layout (select a different template, or `none`). Vary the
 > look by defining a second template, as `bare` above. You *can* still restyle
 > furniture via `.block-<name>` / `.template-<name> .block-<name>` in `theme.css`.
+
+### Token overrides (templates & layouts)
+
+A template or a layout can override **tokens**, scoped to slides that use it —
+so a "dark mode" is *data*, not a CSS rule. This makes a template a **mode
+bundle** (a colour scheme + its furniture):
+
+```toml
+[template.dark]                # any layout that selects `dark` flips to dark mode
+[template.dark.tokens]
+bg    = "#182534"
+fg    = "#ffffff"
+muted = "rgba(255,255,255,0.6)"
+[template.dark.blocks]
+logo  = { at = "x53 y1 x62 y6", image = "url('logo-light.svg')" }
+
+[layout.section.tokens]        # or scope tokens to one layout
+accent = "#ff4d00"
+```
+
+They emit `.template-<name> { --… }` and `.layout-<name> { --… }`. The slide
+background is `var(--bg)` and text re-resolves `var(--fg)` at the slide, so
+overriding `bg`/`fg` flips the whole slide with no extra CSS. **Layout tokens win
+over template tokens** (equal specificity, emitted later); a per-slide
+`background:`/`scheme:` still overrides both. Use this instead of
+`.layout-x { background: … }` in `theme.css`.
 
 ### Repeatable blocks
 
@@ -299,9 +383,20 @@ slide; base.css styles it). Column/row indices are 1-based and supported 1–8
 | `highlight-row: N` | `.hl-row-N` | tints body row N (`--bg-2`) |
 | `row-headers: true` | `.row-headers` | first column styled as bold labels |
 
-A theme can restyle these (e.g. a stronger highlight) — they're plain CSS
-classes. For `colspan`/`rowspan` or per-cell control, use a `raw` HTML `<table>`;
-it inherits the same table styling.
+**Density & style** are two more orthogonal per-slide controls (same mechanism —
+frontmatter → slide class). Spacing remaps the cell-pad tokens; style toggles the
+row/border treatment. Both are token-driven, so a theme restyles the classes or
+the tokens; `default` spacing and `lines` style are the no-class defaults.
+
+| Frontmatter | Values (default first) | Class | Effect |
+|---|---|---|---|
+| `table-spacing:` | `default` \| `compact` \| `comfortable` | `.table-compact` / `.table-comfortable` | remaps `--cell-pad-y`/`--cell-pad-x` |
+| `table-style:` | `lines` \| `stripes` \| `borders` \| `none` | `.table-stripes` / `.table-borders` / `.table-none` | zebra `--bg-2` rows / full cell borders / no rules |
+
+They compose with each other and with the emphasis classes (e.g. `compact` +
+`stripes` + `highlight-col`). A theme can restyle these (e.g. a stronger
+highlight) — they're plain CSS classes. For `colspan`/`rowspan` or per-cell
+control, use a `raw` HTML `<table>`; it inherits the same table styling.
 
 ### Deck chrome
 

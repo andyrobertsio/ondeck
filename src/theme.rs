@@ -1,7 +1,13 @@
 //! Theme loading. A theme is a directory of `theme.toml` (tokens + grid +
-//! templates + layouts) and `theme.css` (styling). The `default` theme — its
-//! `base.css`, `runtime.js`, and manifest in `themes/default/` — is compiled into
-//! the binary so `ondeck` works with zero external files.
+//! templates + layouts) and `theme.css` (styling).
+//!
+//! **The substrate is `base`** (`themes/base/`: `base.css` machinery +
+//! agnostic look, `base.toml` neutral token contract + grid), compiled into the
+//! binary and emitted beneath every deck. base ships no layouts. **Themes layer
+//! on base**, and a theme may `extends = "<other>"` to inherit that theme's
+//! tokens, layouts, templates, and CSS before applying its own. With no
+//! `extends`, a theme builds straight on base. The bundled `default` theme owns
+//! the core layout vocabulary; `bold`/`paper` extend it.
 //!
 //! Model: a **block** is the one placed-region primitive (positioned by `at=`
 //! cells). A block is *fixed* when the theme gives it content (`image`/`text`),
@@ -9,21 +15,21 @@
 //! of fixed furniture blocks; a **layout** selects a template and owns its own
 //! blocks. A slide picks a layout.
 
-use std::collections::{BTreeMap, BTreeSet};
-use std::path::Path;
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
 use crate::grid::{parse_at, Rect, RepeatAlign, RepeatDir};
 
-/// The engine's default stylesheet (tokens + grid vocabulary + default layout
-/// styling), emitted before every theme. Themes override via [tokens]/theme.css.
-/// Engine machinery (structural CSS), emitted first for every theme.
-const BASE_CSS: &str = include_str!("../themes/default/base.css");
-/// The default theme's look (palette + typography + per-layout styling), emitted
-/// next for every theme as the base styling all themes inherit.
+/// The engine substrate's machinery + agnostic, token-driven look. Emitted first.
+const BASE_CSS: &str = include_str!("../themes/base/base.css");
+/// The substrate's manifest: the neutral token contract + default grid.
+const BASE_TOML: &str = include_str!("../themes/base/base.toml");
+/// The bundled `default` theme's per-layout look. Compiled in so it resolves
+/// (and `extends = "default"`) with no `themes/` dir on disk.
 const DEFAULT_CSS: &str = include_str!("../themes/default/theme.css");
-/// The default theme's manifest: the engine's layout/block vocabulary as data.
+/// The bundled `default` theme's manifest: palette tokens + the core layouts.
 const DEFAULT_TOML: &str = include_str!("../themes/default/theme.toml");
 
 // ---------------------------------------------------------------------------
@@ -41,6 +47,9 @@ pub enum Layer {
 /// Content sizing within a block's cell.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Fit {
+    /// Natural flow; content is authored to fit and clips on overflow (default).
+    Natural,
+    /// Scale-to-fit: wrap in `.fit` and shrink uniformly until it fits (opt-in).
     Scale,
     Cover,
     Contain,
@@ -85,6 +94,8 @@ pub struct Block {
     pub align_x: Align,
     pub align_y: Align,
     pub fit: Fit,
+    /// Explicit `background-size` for an `image` block (overrides `fit`).
+    pub image_size: Option<String>,
     pub transition: Option<String>,
     pub repeat: Option<Repeat>,
 }
@@ -131,31 +142,6 @@ impl Theme {
 }
 
 // ---------------------------------------------------------------------------
-// Engine layout vocabulary — parsed from the embedded `default` theme.toml, so
-// the layouts are data (discoverable + editable), not hardcoded. Every theme
-// inherits these and overrides selectively. The default theme has no templates
-// (furniture is theme-only), so these layouts carry no template.
-// ---------------------------------------------------------------------------
-
-fn default_layouts() -> BTreeMap<String, ResolvedLayout> {
-    let file: ThemeFile =
-        toml::from_str(DEFAULT_TOML).expect("embedded default theme.toml must parse");
-    let mut m = BTreeMap::new();
-    for (lname, lf) in &file.layout {
-        let blocks = resolve_blocks(&lf.blocks, &format!("default layout '{lname}'"), None)
-            .expect("embedded default layout blocks must resolve");
-        m.insert(
-            lname.clone(),
-            ResolvedLayout {
-                template: None,
-                blocks,
-            },
-        );
-    }
-    m
-}
-
-// ---------------------------------------------------------------------------
 // Raw deserialized `theme.toml`
 // ---------------------------------------------------------------------------
 
@@ -163,8 +149,14 @@ fn default_layouts() -> BTreeMap<String, ResolvedLayout> {
 struct ThemeFile {
     #[serde(default)]
     name: Option<String>,
+    /// Inherit another theme's tokens/layouts/templates/CSS before our own.
+    /// A built-in name, a path, or a name under `./themes/`. Omitted (or
+    /// "base") = build straight on the substrate.
     #[serde(default)]
-    grid: GridCfg,
+    extends: Option<String>,
+    /// Grid size; when omitted, inherited (ultimately from base's 64×36).
+    #[serde(default)]
+    grid: Option<GridCfg>,
     /// Default fragment transition (e.g. "fade", "fade-up", "zoom").
     #[serde(default)]
     transition: Option<String>,
@@ -182,6 +174,10 @@ struct ThemeFile {
 struct TemplateFile {
     #[serde(default)]
     default: bool,
+    /// Token overrides for slides using this template (a "mode" bundle:
+    /// background/foreground/etc.), emitted as `.template-<name> { --… }`.
+    #[serde(default)]
+    tokens: BTreeMap<String, String>,
     #[serde(default)]
     blocks: BTreeMap<String, BlockFile>,
 }
@@ -191,6 +187,10 @@ struct LayoutFile {
     /// A template name, or "none" to opt out of the default template.
     #[serde(default)]
     template: Option<String>,
+    /// Token overrides scoped to this layout (`.layout-<name> { --… }`);
+    /// override the template's tokens.
+    #[serde(default)]
+    tokens: BTreeMap<String, String>,
     #[serde(default)]
     blocks: BTreeMap<String, BlockFile>,
 }
@@ -213,6 +213,8 @@ struct BlockFile {
     align_y: Option<String>,
     #[serde(default)]
     fit: Option<String>,
+    #[serde(default, rename = "image-size")]
+    image_size: Option<String>,
     #[serde(default)]
     transition: Option<String>,
     #[serde(default)]
@@ -227,7 +229,7 @@ struct BlockFile {
     repeatable_align: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone, Copy)]
 struct GridCfg {
     cols: u8,
     rows: u8,
@@ -293,8 +295,8 @@ fn resolve_block(
     };
 
     let align_x = match f.align_x.as_deref() {
-        None | Some("center") => Align::Center,
-        Some("left") => Align::Start,
+        None | Some("left") => Align::Start, // default is left
+        Some("center") => Align::Center,
         Some("right") => Align::End,
         Some(o) => return Err(err(format!("bad align-x '{o}' (left|center|right)"))),
     };
@@ -305,10 +307,11 @@ fn resolve_block(
         Some(o) => return Err(err(format!("bad align-y '{o}' (top|center|bottom)"))),
     };
     let fit = match f.fit.as_deref() {
-        None | Some("scale") => Fit::Scale,
+        None | Some("none") => Fit::Natural, // natural flow + clip (default)
+        Some("scale") => Fit::Scale,
         Some("cover") => Fit::Cover,
         Some("contain") => Fit::Contain,
-        Some(o) => return Err(err(format!("bad fit '{o}' (scale|cover|contain)"))),
+        Some(o) => return Err(err(format!("bad fit '{o}' (none|scale|cover|contain)"))),
     };
 
     let repeat = if f.repeatable {
@@ -352,6 +355,7 @@ fn resolve_block(
         align_x,
         align_y,
         fit,
+        image_size: f.image_size.clone(),
         transition: f.transition.clone(),
         repeat,
     })
@@ -368,35 +372,35 @@ fn resolve_blocks(
         .collect()
 }
 
-impl Theme {
-    /// Resolve a theme spec: a built-in name, a directory path, or a name under
-    /// `./themes/`.
-    pub fn load(spec: &str) -> Result<Theme, String> {
-        if spec == "default" {
-            // The built-in baseline is compiled in, so it resolves with no
-            // `themes/` dir on disk.
-            return Theme::from_parts(DEFAULT_TOML, "", None);
-        }
-        let direct = Path::new(spec);
-        let under_themes = Path::new("themes").join(spec);
-        let dir = if direct.is_dir() {
-            direct.to_path_buf()
-        } else if under_themes.is_dir() {
-            under_themes
-        } else {
-            return Err(format!(
-                "unknown theme '{spec}' (not a built-in, a directory, or themes/{spec})"
-            ));
-        };
+/// One theme's parsed manifest + raw CSS + the dir its assets resolve against.
+struct RawTheme {
+    file: ThemeFile,
+    css: String,
+    asset_base: Option<PathBuf>,
+}
 
-        let toml = std::fs::read_to_string(dir.join("theme.toml"))
-            .map_err(|e| format!("reading {}: {e}", dir.join("theme.toml").display()))?;
-        let css = std::fs::read_to_string(dir.join("theme.css")).unwrap_or_default();
-        Theme::from_parts(&toml, &css, Some(&dir))
+/// A layout under construction as the inheritance chain is folded in.
+#[derive(Default)]
+struct LayoutAcc {
+    /// `Some(Some(name))` selects a template, `Some(None)` opts out ("none");
+    /// `None` means no theme in the chain set one (→ inherit the default).
+    template: Option<Option<String>>,
+    blocks: Vec<Block>,
+}
+
+impl Theme {
+    /// Resolve a theme spec: a built-in name (`default`/`base`), a directory
+    /// path, or a name under `./themes/`. Follows `extends` to build the
+    /// inheritance chain, then folds it onto the `base` substrate.
+    pub fn load(spec: &str) -> Result<Theme, String> {
+        let mut seen = Vec::new();
+        let chain = resolve_chain(spec, &mut seen)?;
+        assemble(&chain)
     }
 
-    /// `asset_base`, when set, is the theme directory: `url(…)` references in the
-    /// theme's CSS (fonts, background images) are inlined as data URIs against it.
+    /// Assemble a single in-memory theme (base substrate + this one, no
+    /// `extends` resolution). Test helper.
+    #[cfg(test)]
     fn from_parts(
         toml_src: &str,
         css_src: &str,
@@ -404,30 +408,122 @@ impl Theme {
     ) -> Result<Theme, String> {
         let file: ThemeFile =
             toml::from_str(toml_src).map_err(|e| format!("parsing theme.toml: {e}"))?;
+        let raw = RawTheme {
+            file,
+            css: css_src.to_string(),
+            asset_base: asset_base.map(Path::to_path_buf),
+        };
+        assemble(std::slice::from_ref(&raw))
+    }
+}
 
-        // CSS cascade: engine machinery, then the default look (the base styling
-        // every theme inherits), then this theme's [tokens] (override the :root
-        // defaults), then its theme.css (overrides everything).
-        let mut css = String::from(BASE_CSS);
-        css.push_str(DEFAULT_CSS);
-        css.push_str("\n:root{");
-        for (k, v) in &file.tokens {
-            css.push_str(&format!("--{k}:{v};"));
+/// Read one theme's manifest + CSS for a spec, without following `extends`.
+/// `default` is compiled in; everything else is a directory or `./themes/<name>`.
+fn read_raw(spec: &str) -> Result<RawTheme, String> {
+    if spec == "default" {
+        let file = toml::from_str(DEFAULT_TOML).map_err(|e| format!("parsing default: {e}"))?;
+        return Ok(RawTheme {
+            file,
+            css: DEFAULT_CSS.to_string(),
+            asset_base: None,
+        });
+    }
+    let direct = Path::new(spec);
+    let under_themes = Path::new("themes").join(spec);
+    let dir = if direct.is_dir() {
+        direct.to_path_buf()
+    } else if under_themes.is_dir() {
+        under_themes
+    } else {
+        return Err(format!(
+            "unknown theme '{spec}' (not a built-in, a directory, or themes/{spec})"
+        ));
+    };
+    let toml = std::fs::read_to_string(dir.join("theme.toml"))
+        .map_err(|e| format!("reading {}: {e}", dir.join("theme.toml").display()))?;
+    let css = std::fs::read_to_string(dir.join("theme.css")).unwrap_or_default();
+    let file: ThemeFile = toml::from_str(&toml).map_err(|e| format!("parsing theme.toml: {e}"))?;
+    Ok(RawTheme {
+        file,
+        css,
+        asset_base: Some(dir),
+    })
+}
+
+/// Follow `extends` to produce the chain root-ancestor → … → `spec` (the leaf).
+/// `base` (or omitted `extends`) terminates the chain — base is the substrate,
+/// folded in separately, not a link here.
+fn resolve_chain(spec: &str, seen: &mut Vec<String>) -> Result<Vec<RawTheme>, String> {
+    if seen.iter().any(|s| s == spec) {
+        return Err(format!(
+            "theme `extends` cycle: {} -> {spec}",
+            seen.join(" -> ")
+        ));
+    }
+    seen.push(spec.to_string());
+    let raw = read_raw(spec)?;
+    let mut chain = match raw.file.extends.as_deref() {
+        None | Some("base") => Vec::new(),
+        Some(parent) => resolve_chain(parent, seen)?,
+    };
+    chain.push(raw);
+    Ok(chain)
+}
+
+/// Emit a token map as a CSS custom-property rule for `selector`.
+fn emit_token_rule(out: &mut String, selector: &str, tokens: &BTreeMap<String, String>) {
+    if tokens.is_empty() {
+        return;
+    }
+    out.push_str(&format!("\n{selector}{{"));
+    for (k, v) in tokens {
+        out.push_str(&format!("--{k}:{v};"));
+    }
+    out.push_str("}\n");
+}
+
+/// Fold the `base` substrate + the resolved chain (root → leaf) into a Theme.
+fn assemble(chain: &[RawTheme]) -> Result<Theme, String> {
+    let base: ThemeFile = toml::from_str(BASE_TOML).expect("embedded base.toml must parse");
+
+    // CSS cascade: base machinery + agnostic look, base tokens, then each theme
+    // in chain order — its tokens (override) then its CSS (override), with its
+    // own assets inlined so the deck stays self-contained.
+    let mut css = String::from(BASE_CSS);
+    emit_token_rule(&mut css, ":root", &base.tokens);
+
+    let mut grid = base.grid.unwrap_or_default();
+    let mut transition: Option<String> = None;
+    let mut name: Option<String> = None;
+    let mut templates: BTreeMap<String, Vec<Block>> = BTreeMap::new();
+    let mut default_template: Option<String> = None;
+    let mut layouts: BTreeMap<String, LayoutAcc> = BTreeMap::new();
+    // Per-template / per-layout token overrides, merged by name down the chain.
+    let mut template_tokens: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
+    let mut layout_tokens: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
+
+    for raw in chain {
+        let asset_base = raw.asset_base.as_deref();
+        emit_token_rule(&mut css, ":root", &raw.file.tokens);
+        let theme_css = match asset_base {
+            Some(base) => crate::assets::inline(&raw.css, base),
+            None => raw.css.clone(),
+        };
+        css.push_str(&theme_css);
+
+        if let Some(g) = raw.file.grid {
+            grid = g;
         }
-        css.push_str("}\n");
-        css.push_str(css_src);
-
-        // Inline the theme's own CSS assets (fonts, background images, block
-        // images referenced from theme.css) so the deck stays self-contained.
-        if let Some(base) = asset_base {
-            css = crate::assets::inline(&css, base);
+        if let Some(t) = &raw.file.transition {
+            transition = Some(t.clone());
+        }
+        if let Some(n) = &raw.file.name {
+            name = Some(n.clone());
         }
 
-        // Templates, and the (at most one) default.
-        let mut templates: BTreeMap<String, Vec<Block>> = BTreeMap::new();
-        let mut default_template: Option<String> = None;
+        // Templates: child overrides by name; at most one `default` per theme.
         let mut default_count = 0u32;
-        for (tname, tf) in &file.template {
+        for (tname, tf) in &raw.file.template {
             if tf.default {
                 default_count += 1;
                 default_template = Some(tname.clone());
@@ -436,69 +532,84 @@ impl Theme {
                 tname.clone(),
                 resolve_blocks(&tf.blocks, &format!("template '{tname}'"), asset_base)?,
             );
+            if !tf.tokens.is_empty() {
+                template_tokens.insert(tname.clone(), tf.tokens.clone());
+            }
         }
         if default_count > 1 {
             return Err("more than one template marked `default = true`".into());
         }
 
-        // Layouts: engine defaults, then theme overrides (template and/or blocks
-        // independently).
-        let mut layouts = default_layouts();
-        let mut explicit_template: BTreeSet<String> = BTreeSet::new();
-        for (lname, lf) in &file.layout {
-            let entry = layouts
-                .entry(lname.clone())
-                .or_insert_with(|| ResolvedLayout {
-                    template: None,
-                    blocks: vec![],
-                });
+        // Layouts: child overrides a layout's template and/or blocks by name.
+        for (lname, lf) in &raw.file.layout {
+            let entry = layouts.entry(lname.clone()).or_default();
             if let Some(t) = &lf.template {
-                explicit_template.insert(lname.clone());
-                entry.template = if t == "none" {
-                    None
-                } else if templates.contains_key(t) {
-                    Some(t.clone())
-                } else {
-                    return Err(format!("layout '{lname}': unknown template '{t}'"));
-                };
+                entry.template = Some(if t == "none" { None } else { Some(t.clone()) });
             }
             if !lf.blocks.is_empty() {
                 entry.blocks =
                     resolve_blocks(&lf.blocks, &format!("layout '{lname}'"), asset_base)?;
             }
-        }
-        // Layouts that didn't name a template inherit the default template.
-        for (lname, rl) in layouts.iter_mut() {
-            if !explicit_template.contains(lname) {
-                rl.template = default_template.clone();
+            if !lf.tokens.is_empty() {
+                layout_tokens.insert(lname.clone(), lf.tokens.clone());
             }
         }
-        // A block named in both a layout and its template is ambiguous.
-        for (lname, rl) in &layouts {
-            if let Some(tn) = &rl.template {
-                if let Some(tb) = templates.get(tn) {
-                    for b in &rl.blocks {
-                        if tb.iter().any(|x| x.name == b.name) {
-                            return Err(format!(
-                                "layout '{lname}' block '{}' collides with a same-named block in template '{tn}'",
-                                b.name
-                            ));
-                        }
+    }
+
+    // Per-template, then per-layout token overrides (equal specificity, so the
+    // later `.layout-*` rules win over `.template-*`). Emitted after the chain
+    // CSS so they override `:root`.
+    for (tname, toks) in &template_tokens {
+        emit_token_rule(&mut css, &format!(".template-{tname}"), toks);
+    }
+    for (lname, toks) in &layout_tokens {
+        emit_token_rule(&mut css, &format!(".layout-{lname}"), toks);
+    }
+
+    // Resolve each layout's template: explicit selection wins; otherwise inherit
+    // the chain's default template. Validate names + block/furniture collisions.
+    let mut resolved: BTreeMap<String, ResolvedLayout> = BTreeMap::new();
+    for (lname, acc) in layouts {
+        let template = match acc.template {
+            Some(Some(t)) => {
+                if !templates.contains_key(&t) {
+                    return Err(format!("layout '{lname}': unknown template '{t}'"));
+                }
+                Some(t)
+            }
+            Some(None) => None, // explicit "none"
+            None => default_template.clone(),
+        };
+        if let (Some(tn), tb) = (&template, &templates) {
+            if let Some(tb) = tb.get(tn) {
+                for b in &acc.blocks {
+                    if tb.iter().any(|x| x.name == b.name) {
+                        return Err(format!(
+                            "layout '{lname}' block '{}' collides with a same-named block in template '{tn}'",
+                            b.name
+                        ));
                     }
                 }
             }
         }
-
-        Ok(Theme {
-            name: file.name.unwrap_or_else(|| "theme".to_string()),
-            cols: file.grid.cols,
-            rows: file.grid.rows,
-            css,
-            templates,
-            layouts,
-            default_transition: file.transition.unwrap_or_else(|| "fade".to_string()),
-        })
+        resolved.insert(
+            lname,
+            ResolvedLayout {
+                template,
+                blocks: acc.blocks,
+            },
+        );
     }
+
+    Ok(Theme {
+        name: name.unwrap_or_else(|| "theme".to_string()),
+        cols: grid.cols,
+        rows: grid.rows,
+        css,
+        templates,
+        layouts: resolved,
+        default_transition: transition.unwrap_or_else(|| "fade".to_string()),
+    })
 }
 
 #[cfg(test)]
@@ -519,7 +630,38 @@ mod tests {
     }
 
     #[test]
-    fn overrides_layer_over_defaults() {
+    fn image_block_parses_image_size() {
+        let toml = concat!(
+            "[template.brand]\ndefault = true\n[template.brand.blocks]\n",
+            "logo = { at = \"x1 y1 x4 y4\", image = \"url('l.png')\", image-size = \"80%\" }\n",
+        );
+        let t = Theme::from_parts(toml, "", None).unwrap();
+        assert_eq!(t.templates["brand"][0].image_size.as_deref(), Some("80%"));
+    }
+
+    #[test]
+    fn template_and_layout_token_overrides_emit_scoped_css() {
+        let toml = concat!(
+            "[template.dark]\n[template.dark.tokens]\nbg = \"#182534\"\nfg = \"#fff\"\n",
+            "[template.dark.blocks]\n",
+            "[layout.bullets]\ntemplate = \"dark\"\n",
+            "[layout.bullets.tokens]\naccent = \"#abc\"\n",
+            "[layout.bullets.blocks]\nbody = { at = \"x4 y3 x27 y18\" }\n",
+        );
+        let t = Theme::from_parts(toml, "", None).unwrap();
+        assert!(t.css.contains(".template-dark{--bg:#182534;"));
+        assert!(t.css.contains(".layout-bullets{--accent:#abc;"));
+        // The layout rule must come after the template rule (equal specificity →
+        // layout wins).
+        let ti = t.css.find(".template-dark{").unwrap();
+        let li = t.css.find(".layout-bullets{").unwrap();
+        assert!(li > ti, "layout token rule must follow template token rule");
+    }
+
+    #[test]
+    fn single_theme_is_base_only() {
+        // With no `extends`, a theme builds straight on base: it owns ONLY the
+        // layouts it defines — no `default` vocabulary leaks in.
         let toml = concat!(
             "name=\"x\"\ntransition=\"zoom\"\n",
             "[tokens]\naccent=\"#abc\"\n",
@@ -527,10 +669,23 @@ mod tests {
         );
         let t = Theme::from_parts(toml, ".custom{color:red}", None).unwrap();
         assert_eq!(t.default_transition, "zoom");
-        assert!(t.css.contains("--accent:#abc;"));
+        assert!(t.css.contains("--accent:#abc;")); // theme tokens override base
         assert!(t.css.contains(".custom{color:red}"));
         assert_eq!(t.layouts["bullets"].blocks[0].rect.col_start, 4);
-        assert!(t.layouts.contains_key("stat")); // others still inherited
+        assert!(!t.layouts.contains_key("stat")); // no implicit default inheritance
+    }
+
+    #[test]
+    fn extends_inherits_parent_layouts_and_tokens() {
+        // paper `extends = "default"` → inherits default's core layouts and the
+        // base machinery, while its own tokens win.
+        let t = Theme::load("paper").unwrap();
+        assert_eq!(t.name, "paper");
+        for l in ["title", "bullets", "stat", "quote", "compare"] {
+            assert!(t.layouts.contains_key(l), "missing inherited layout {l}");
+        }
+        assert!(t.css.contains("--accent:#b4341c;")); // paper's token overrides default's
+        assert!(t.css.contains(".slide-content")); // base machinery present
     }
 
     #[test]
@@ -552,10 +707,11 @@ mod tests {
             "[template.brand]\ndefault = true\n",
             "[template.brand.blocks]\nlogo = { at = \"x2 y2 x5 y3\", image = \"url('l.png')\" }\n",
             "[template.bare]\n[template.bare.blocks]\n",
+            "[layout.bullets.blocks]\nbody = { at = \"x4 y3 x27 y18\" }\n",
             "[layout.title]\ntemplate = \"bare\"\n",
         );
         let t = Theme::from_parts(toml, "", None).unwrap();
-        // brand is the default → bullets (untouched) inherits it.
+        // brand is the default → bullets (defined, untouched template) inherits it.
         assert_eq!(t.layouts["bullets"].template.as_deref(), Some("brand"));
         // title explicitly picked bare.
         assert_eq!(t.layouts["title"].template.as_deref(), Some("bare"));
@@ -572,6 +728,7 @@ mod tests {
         let toml = concat!(
             "[template.brand]\ndefault = true\n[template.brand.blocks]\n",
             "logo = { at = \"x2 y2 x5 y3\", image = \"url('l.png')\" }\n",
+            "[layout.bullets.blocks]\nbody = { at = \"x4 y3 x27 y18\" }\n",
             "[layout.section]\ntemplate = \"none\"\n",
         );
         let t = Theme::from_parts(toml, "", None).unwrap();
