@@ -15,13 +15,18 @@ An ondeck theme is a directory of two files:
 
 ```
 themes/<name>/
-  theme.toml   # tokens (colours/fonts), grid size, optional layout overrides
+  theme.toml   # name, extends, tokens (colours/fonts), grid, optional layouts
   theme.css    # optional CSS overrides on top of the engine's base stylesheet
 ```
 
-Everything is **inherited** from the engine's base stylesheet and default
-layouts, so a theme can be as small as a name plus a few tokens — you override
-only what you want to change.
+Every theme sits on the **`base` substrate** (the engine machinery + a neutral,
+token-driven look — typography, code, tables) and inherits a full token contract,
+so a theme can be as small as a name plus a few tokens. **To get the standard
+layouts** (`title`, `bullets`, `two-col`, `stat`, …) and their styling, set
+**`extends = "default"`** — that inherits the bundled `default` theme, and you
+override only what you want. (Omitting `extends` builds straight on base with **no
+layouts** — only for a bespoke design system that defines its own; rare.)
+**For almost every theme, `extends = "default"` is what you want.**
 
 **Read `THEMING.md` (top level of the repo) for the complete reference** — every
 token, the block model, templates, layout/block selectors, syntax-token class,
@@ -46,10 +51,15 @@ stylesheet uses, so changing a token restyles every layout at once.
 | `frame` | letterbox bar colour around the 16:9 stage |
 | `font` | main font stack |
 | `mono` | code font stack |
+| `h1-size`…`h3-size`, `p-size`, `code-size`, `table-size` | type scale (font sizes, `cqmin`) |
+| `h1-weight`…`h3-weight` | heading font weights |
+| `leading` (+ `h1-leading`, `code-leading`, …) | line-height; `leading` is the master knob |
+| `radius` | corner-radius unit (code blocks etc.) |
 | `pad` | global padding unit (a `cqmin` length, e.g. `8cqmin`) |
 
 ```toml
 name = "midnight-rose"
+extends = "default"             # inherit the standard layouts + styling
 transition = "fade-up"          # default fragment transition (optional)
 
 [tokens]
@@ -76,10 +86,11 @@ rows = 36
 
 ### Templates & layout blocks (optional)
 
-Layouts are made of **blocks** (the placed-region primitive); their rects are
-inherited. Override a layout's block by name (`at` = `x{c1} y{r1} x{c2} y{r2}`,
-inclusive cells). Fixed **furniture** (logo/watermark) lives in a `[template.*]`
-that layouts inherit (one can be `default = true`):
+Layouts are made of **blocks** (the placed-region primitive); with
+`extends = "default"` their rects are inherited, so you override a layout's block
+by name only to move it (`at` = `x{c1} y{r1} x{c2} y{r2}`, inclusive cells).
+Fixed **furniture** (logo/watermark) lives in a `[template.*]` that layouts
+inherit (one can be `default = true`):
 
 ```toml
 [template.brand]
@@ -149,8 +160,9 @@ the theme directory and `@font-face` it from `theme.css` — ondeck inlines the
   gradients/emphasis. More than two competing hues reads as noise.
 - **Pick `bg-2` close to `bg`** (a subtle raised surface), not a jarring third
   colour — it backs code blocks and cards.
-- **Type:** one good font stack via `font`; the base scale is fluid (`cqmin`),
-  so you rarely need to touch sizes — adjust via tokens/overrides only if needed.
+- **Type:** one good font stack via `font`; the scale is fluid (`cqmin`). Retune
+  it with the `*-size`/`*-weight` tokens (e.g. `h1-weight = "800"`) — no CSS
+  needed for sizes/weights; reach for `theme.css` only for tracking/line-height.
 - **Test light themes carefully:** code blocks (`bg-2`) and the stat gradient
   read very differently on light backgrounds — verify them explicitly.
 - **Restraint.** The base stylesheet is already designed; change tokens first,

@@ -183,7 +183,7 @@ a `:::name` per block.
 | `stat` ✳ | `:::head` + repeatable `:::figure` (`**value**` + label) | Big-number slides |
 | `compare` ✳ | `:::head` / `:::left` / `:::right` | A vs B cards |
 | `code` | fenced code block | Syntax-highlighted at build |
-| `table` | Markdown table | Themed; `highlight-col`/`-row`/`row-headers` emphasis |
+| `table` | Markdown table | Themed; `highlight-col`/`-row`/`row-headers` emphasis, `table-spacing`/`table-style` |
 | `image` | `![](src)`; `fit: full\|contain` | Image *is* the slide |
 | `raw` | raw HTML | Escape hatch |
 | `free` | `:::block at="x… y…"` | Coordinate placement |
@@ -312,8 +312,12 @@ serves over http and opens both windows for you.
 ## Themes
 
 A theme is a directory of `theme.toml` (tokens, grid, templates, layout blocks)
-and an optional `theme.css` (styling). Everything is inherited from the engine's
-defaults, so a theme can be as small as a name plus a few token overrides.
+and an optional `theme.css` (styling). Every theme sits on the built-in **`base`**
+substrate (engine machinery + a neutral, token-driven look) and gets a full token
+contract. Add **`extends = "default"`** to inherit the standard layouts and
+styling — then a theme can be as small as a name plus a few token overrides.
+(Omit `extends` to build straight on base with no layouts — for a bespoke design
+system that defines its own.)
 
 Select a theme with `--theme <name|path>` or the deck's `theme:` frontmatter.
 Resolution order: `--theme` → frontmatter → `default`. A `<name>` is looked up
@@ -322,6 +326,7 @@ as a built-in, a directory, then `./themes/<name>/`.
 ```toml
 # themes/mytheme/theme.toml
 name = "mytheme"
+extends = "default"             # inherit the standard layouts + styling
 transition = "fade-up"          # default fragment transition
 
 [tokens]                        # emitted as CSS vars (--bg, --accent, …)
@@ -386,11 +391,12 @@ chrome — a good smoke test and reference.
 | `src/pdf.rs` | PDF export (headless browser) |
 | `src/pptx.rs` | PPTX export (image-per-slide OOXML) |
 | `src/watch.rs` | Live-reload dev server |
-| `themes/default/base.css` | Engine machinery (stage, grid, `.block`, transitions, print) |
-| `themes/default/theme.css` | The default look (palette, typography, per-layout styling) |
-| `themes/default/theme.toml` | The engine's layout/block vocabulary, as data |
-| `src/assets/runtime.js` | Deck runtime: navigation, fragments, transitions, scale-to-fit |
-| `themes/` | Built-in themes; `default` is compiled into the binary |
+| `themes/base/base.css` | Engine machinery + agnostic look (typography, code, tables) |
+| `themes/base/base.toml` | Neutral token contract + default grid; no layouts |
+| `themes/default/theme.css` | The default theme's per-layout look |
+| `themes/default/theme.toml` | The default theme's palette + core layout vocabulary |
+| `src/assets/runtime.js` | Deck runtime: navigation, fragments, transitions, opt-in scale-to-fit |
+| `themes/` | Built-in themes; `base` + `default` are compiled into the binary |
 | `SPEC.md` | Format & architecture reference |
 
 ## Notes & limitations

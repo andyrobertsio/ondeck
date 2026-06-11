@@ -1,8 +1,9 @@
 /* bold — high-contrast keynote. Overrides on top of base.css.
    Heavier type, punchy accent, uppercase section dividers, solid stat numbers. */
 
-h1 { font-weight: 800; letter-spacing: -0.035em; }
-h2 { font-weight: 600; }
+/* Heading weights now come from --h1-weight/--h2-weight tokens (theme.toml);
+   only the tighter tracking is left as a CSS tweak. */
+h1 { letter-spacing: -0.035em; }
 strong { color: var(--accent); }
 
 .layout-title h1 { font-size: clamp(3rem, 9vmin, 6.5rem); }

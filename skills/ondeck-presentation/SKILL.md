@@ -180,7 +180,10 @@ highlight-col: 3      # tint a column (1–8) to call it out; or highlight-row: 
 Tables are plain Markdown (column alignment via `:--`/`--:`/`:--:` is respected)
 and styled by the theme. Keep them modest — a slide can't show a spreadsheet; for
 big data, show a chart image or split it. `row-headers: true` styles the first
-column as labels. For `colspan`/`rowspan`, drop to a `raw` HTML table.
+column as labels. Tune the look with `table-spacing:` (`compact`/`comfortable`)
+and `table-style:` (`stripes`/`borders`/`none`; default is `lines`) — they
+compose with each other and with `highlight-*`. For `colspan`/`rowspan`, drop to
+a `raw` HTML table.
 
 ## Fragments (incremental reveal)
 

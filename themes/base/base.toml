@@ -1,0 +1,58 @@
+# base.toml — the engine substrate's manifest. It defines the neutral TOKEN
+# CONTRACT (every token, with neutral values) and the default GRID, so any theme
+# — including one built straight on base with no `extends` — resolves to a
+# complete, coherent set of CSS variables. base ships NO layouts and NO
+# templates: the layout vocabulary is a theme's to define (the bundled `default`
+# theme owns the core set). Themes override these tokens; `default` supplies the
+# blue palette, others layer their own.
+
+name = "base"
+
+[grid]
+cols = 64
+rows = 36
+
+[tokens]
+# Neutral greyscale palette — a deck on base alone is plain but coherent; themes
+# bring the colour. The bundled `default` theme overrides these seven.
+bg       = "#0f1012"
+bg-2     = "#1a1b1e"
+fg       = "#e9e9ec"
+muted    = "#9a9ba2"
+accent   = "#9aa0ab"
+accent-2 = "#c2c6cf"
+rule     = "#2a2c31"
+
+# Type scale + heading weights +leading
+# Restyle typography by setting a token, no CSS override needed.
+leading       = "1.45"
+h1-size    = "7cqmin"
+h1-weight  = "700"
+h1-leading    = "1.05"
+h2-size    = "4cqmin"
+h2-weight  = "500"
+h2-leading    = "var(--leading)"
+h3-size    = "3cqmin"
+h3-weight  = "600"
+h3-leading    = "var(--leading)"
+p-size     = "2.6cqmin"
+p-leading     = "var(--leading)"
+code-size  = "2cqmin"      # code-block text
+code-leading  = "1.5"
+code-pad   = "2.5cqmin"    # code-block padding
+table-size = "2.4cqmin"    # table text
+table-leading = "var(--leading)"
+cell-pad-y = "0.55em"      # table cell padding (the `table-spacing` variants remap these)
+cell-pad-x = "0.9em"
+table-rule-width = "0.12cqmin"   # row hairline / `table-style: borders` weight
+radius     = "1cqmin"      # corner radius unit (code blocks, inline code)
+
+# Structural / feel defaults — themes rarely change these.
+frame    = "#000"
+stage-w  = "1920"          # design width  (drives stage aspect)
+stage-h  = "1080"          # design height
+pad      = "8cqmin"
+font     = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+mono     = 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace'
+fx-dur   = "0.45s"
+fx-ease  = 'cubic-bezier(0.2, 0.7, 0.2, 1)'

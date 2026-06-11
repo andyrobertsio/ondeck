@@ -219,12 +219,12 @@ fn block_classes(b: &Block) -> String {
     match b.fit {
         Fit::Cover => c.push_str(" fit-cover"),
         Fit::Contain => c.push_str(" fit-contain"),
-        Fit::Scale => {}
+        Fit::Scale | Fit::Natural => {}
     }
     match b.align_x {
-        Align::Start => c.push_str(" ax-start"),
+        Align::Center => c.push_str(" ax-center"),
         Align::End => c.push_str(" ax-end"),
-        Align::Center => {}
+        Align::Start => {} // left — the default
     }
     match b.align_y {
         Align::Center => c.push_str(" ay-center"),
@@ -260,14 +260,26 @@ fn emit_block(b: &Block, rect: &Rect, inner: &str) -> String {
 }
 
 /// A fixed image block: the (already-inlined) image fills the cell via
-/// background, sized by `fit` (`cover` crops, anything else contains).
+/// background, sized by `fit` (`cover` crops, anything else contains) and
+/// positioned by `align-x`/`align-y` (default top-left, like every block).
 fn emit_image_block(b: &Block, rect: &Rect, url: &str) -> String {
-    let size = if b.fit == Fit::Cover {
-        "cover"
-    } else {
-        "contain"
+    // `image-size` (explicit background-size) overrides the `fit` shorthand.
+    let size: &str = match b.image_size.as_deref() {
+        Some(s) => s,
+        None if b.fit == Fit::Cover => "cover",
+        None => "contain",
     };
-    let bg = format!("background:{url} center/{size} no-repeat;");
+    let pos_x = match b.align_x {
+        Align::Start => "left",
+        Align::Center => "center",
+        Align::End => "right",
+    };
+    let pos_y = match b.align_y {
+        Align::Start => "top",
+        Align::Center => "center",
+        Align::End => "bottom",
+    };
+    let bg = format!("background:{url} {pos_x} {pos_y}/{size} no-repeat;");
     format!(
         "<div class=\"{}\" style=\"{}\"></div>",
         block_classes(b),
@@ -394,7 +406,7 @@ fn build_free(
         for inst in instances {
             if let Some(rect) = inst.at {
                 out.push_str(&format!(
-                    "<div class=\"block block-{name}\" style=\"{}\"><div class=\"fit\">{}</div></div>",
+                    "<div class=\"block block-{name}\" style=\"{}\">{}</div>",
                     rect.style(),
                     md_frag(&inst.content, plugins, cfg, counter)
                 ));
@@ -471,6 +483,18 @@ fn render_slide(slide: &Slide, index: usize, theme: &Theme, plugins: &Plugins) -
         .unwrap_or(false)
     {
         classes.push("row-headers".to_string());
+    }
+    // Table density (`compact`/`comfortable`; `default` = no class) and style
+    // (`stripes`/`borders`/`none`; `lines` = no class) → slide classes.
+    if let Some(s) = slide.meta.get("table-spacing").map(|v| v.trim()) {
+        if matches!(s, "compact" | "comfortable") {
+            classes.push(format!("table-{s}"));
+        }
+    }
+    if let Some(s) = slide.meta.get("table-style").map(|v| v.trim()) {
+        if matches!(s, "stripes" | "borders" | "none") {
+            classes.push(format!("table-{s}"));
+        }
     }
 
     let cells = if layout == "raw" {
@@ -748,6 +772,50 @@ mod tests {
         assert!(html.contains("hl-col-2"));
         assert!(html.contains("row-headers"));
         assert!(html.contains("<table>"));
+    }
+
+    #[test]
+    fn image_block_position_and_size_from_props() {
+        use crate::grid::parse_at;
+        use crate::theme::{Align, Block, BlockContent, Fit, Layer};
+        let b = Block {
+            name: "logo".to_string(),
+            rect: parse_at("x1 y1 x4 y4").unwrap(),
+            content: BlockContent::Image("url('x.png')".to_string()),
+            layer: Layer::Front,
+            opacity: None,
+            align_x: Align::End,
+            align_y: Align::Start,
+            fit: Fit::Contain,
+            image_size: None,
+            transition: None,
+            repeat: None,
+        };
+        let html = emit_image_block(&b, &b.rect, "url('x.png')");
+        assert!(html.contains("right top/contain"), "{html}");
+
+        let mut c = b.clone();
+        c.align_x = Align::Center;
+        c.align_y = Align::Center;
+        c.fit = Fit::Cover;
+        let html2 = emit_image_block(&c, &c.rect, "url('x.png')");
+        assert!(html2.contains("center center/cover"), "{html2}");
+
+        // image-size overrides the fit-derived size.
+        let mut e = b.clone();
+        e.image_size = Some("80%".to_string());
+        let html3 = emit_image_block(&e, &e.rect, "url('x.png')");
+        assert!(html3.contains("right top/80% no-repeat"), "{html3}");
+    }
+
+    #[test]
+    fn table_spacing_and_style_variants() {
+        let html = build("---\ntheme: default\n---\n\n---\nlayout: table\ntable-spacing: compact\ntable-style: stripes\n---\n# T\n\n| a | b |\n| - | - |\n| 1 | 2 |\n");
+        assert!(html.contains("table-compact"));
+        assert!(html.contains("table-stripes"));
+        // unknown values are ignored, not emitted as classes
+        let bad = build("---\ntheme: default\n---\n\n---\nlayout: table\ntable-style: bogus\n---\n# T\n\n| a | b |\n| - | - |\n| 1 | 2 |\n");
+        assert!(!bad.contains("table-bogus"));
     }
 
     #[test]
