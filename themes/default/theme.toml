@@ -66,6 +66,14 @@ right = { at = "x35 y13 x58 y32" }
 media = { at = "x1 y1 x32 y36", fit = "cover" }
 body  = { at = "x37 y7 x60 y30" }
 
+# panel: a colour rail painted from `background-color` alone — a block of colour,
+# no SVG. The rail still renders with no content, and (being painted) is excluded
+# from the loose-Markdown sink, so `body` takes the slide; address `:::rail` to
+# lay a label over the fill.
+[layout.panel.blocks]
+rail = { at = "x1 y1 x22 y36", background-color = "var(--accent)", align-y = "bottom" }
+body = { at = "x28 y8 x59 y30" }
+
 # stat: a heading and a repeatable figure that flows right, centred so partial
 # counts sit in the middle.
 [layout.stat.blocks]

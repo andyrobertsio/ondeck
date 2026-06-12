@@ -96,6 +96,10 @@ pub struct Block {
     pub fit: Fit,
     /// Explicit `background-size` for an `image` block (overrides `fit`).
     pub image_size: Option<String>,
+    /// A CSS colour painted as the block's `background-color`. Its presence also
+    /// makes the block render even when no content is authored — a decorative
+    /// panel (e.g. a colour band) — and excludes it from the loose-Markdown sink.
+    pub background_color: Option<String>,
     pub transition: Option<String>,
     pub repeat: Option<Repeat>,
     /// Logical column this block flows in (blocks sharing a name stack and can
@@ -222,6 +226,8 @@ struct BlockFile {
     fit: Option<String>,
     #[serde(default, rename = "image-size")]
     image_size: Option<String>,
+    #[serde(default, rename = "background-color")]
+    background_color: Option<String>,
     #[serde(default)]
     column: Option<String>,
     #[serde(default, rename = "expandable-y")]
@@ -284,6 +290,11 @@ fn resolve_block(
     if f.repeatable && is_fixed {
         return Err(err(
             "repeatable blocks are author-filled — remove `image`/`text`".into(),
+        ));
+    }
+    if f.background_color.is_some() && matches!(content, BlockContent::Image(_)) {
+        return Err(err(
+            "`background-color` conflicts with `image`'s background fill".into(),
         ));
     }
     let has_repeat_props = f.repeatable_direction.is_some()
@@ -369,6 +380,7 @@ fn resolve_block(
         align_y,
         fit,
         image_size: f.image_size.clone(),
+        background_color: f.background_color.clone(),
         transition: f.transition.clone(),
         repeat,
         column: f.column.clone(),
@@ -823,6 +835,33 @@ mod tests {
 
         let bad_rect = "[layout.title.blocks]\nbody = { at = \"nope\" }\n";
         assert!(Theme::from_parts(bad_rect, "", None).is_err());
+
+        // `background-color` on an image block is a no-op (the image's background
+        // shorthand wins), so it's rejected.
+        let paint_image = concat!(
+            "[layout.title.blocks]\n",
+            "x = { at = \"x1 y1 x2 y2\", image = \"url('a')\", background-color = \"#fff\" }\n",
+        );
+        assert!(Theme::from_parts(paint_image, "", None)
+            .unwrap_err()
+            .contains("background-color"));
+    }
+
+    #[test]
+    fn background_color_resolves_onto_block() {
+        let toml = concat!(
+            "[layout.title.blocks]\n",
+            "panel = { at = \"x1 y1 x4 y4\", background-color = \"var(--accent)\" }\n",
+            "body = { at = \"x5 y5 x8 y8\" }\n",
+        );
+        let t = Theme::from_parts(toml, "", None).unwrap();
+        let panel = t.layouts["title"]
+            .blocks
+            .iter()
+            .find(|b| b.name == "panel")
+            .unwrap();
+        assert_eq!(panel.background_color.as_deref(), Some("var(--accent)"));
+        assert!(panel.is_editable()); // painted but still editable-typed
     }
 
     #[test]
