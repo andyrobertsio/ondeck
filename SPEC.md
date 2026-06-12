@@ -117,6 +117,34 @@ A **repeatable** block is filled by writing its `:::name` block multiple times
 `::: notes` is reserved: embedded hidden in the HTML (for a future presenter
 view), never shown on the slide. It is not a block.
 
+### Image options
+
+An inline `{…}` *after* a Markdown image sets how it fits, crops, and scales —
+mirroring the `{+ fx}` fragment marker. All parts optional, order-independent:
+
+```markdown
+![](photo.jpg){cover top}    # cover-crop, framed to the top
+![](logo.png){60%}           # shrink to 60% of the slot, aspect locked
+![](map.png){contain 75%}    # combine
+```
+
+- **fit**: `cover` \| `contain` \| `natural` → `object-fit` (overrides the block's
+  `fit` for this image).
+- **position**: `top`/`bottom`/`left`/`right`/`center` → the image's crop
+  (`object-position`, for `cover`/`contain`) **and** its placement
+  (`justify-self`/`align-self`, for a scaled/natural image). `center` centres
+  both axes; a following axis keyword overrides it (`center left` = left +
+  vertically centred; `center top` = horizontally centred + top).
+- **scale**: `<n>%` → `max-width:n%`, aspect-locked (shrink to a fraction of the
+  slot; never upscales).
+- **decoration**: `border` / `round` / `shadow` → token-driven classes the theme
+  styles (`--img-border`, `--radius`, `--img-shadow`).
+
+A post-process folds the `{…}` into a class + inline style on the `<img>`. A
+group starting with `+` is a fragment marker, not image options; an unrecognised
+group is left as literal text. The theme-side default for an image's crop is the
+block's `align-x`/`align-y` (see THEMING); the author's `{…}` overrides it.
+
 ## The stage
 
 Slides render on a **fixed-aspect stage** (default 1920×1080, 16:9) centered in

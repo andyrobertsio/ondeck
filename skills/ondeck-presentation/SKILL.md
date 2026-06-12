@@ -162,9 +162,24 @@ media: right
 Crews see the next job, route, and parts before they leave the depot.
 :::
 :::media
-![Depot](depot.jpg)
+![Depot](depot.jpg){cover top}
 :::
 ```
+
+**Image options** — an inline `{…}` after any image controls fit, crop, and
+scale (like the `{+ fx}` fragment marker):
+- **fit:** `cover` (crop to fill) · `contain` (fit whole) · `natural`.
+- **place / crop:** `top`/`bottom`/`left`/`right`/`center` — positions the image
+  (centre a shrunk one) and crops a `cover`/`contain` fill. `center` centres
+  both; add an axis to override it (`{50% center left}` = half-size, vertically
+  centred, hard left). `{cover top}` keeps a portrait's head in a wide slot.
+- **scale:** `<n>%` shrinks to that fraction of the slot, aspect locked —
+  `![](logo.png){40%}` for a small logo.
+- **decoration:** `border` · `round` (rounded corners) · `shadow` — the theme's
+  styling, e.g. `![](screenshot.png){round shadow}`.
+
+Combine freely: `![](hero.jpg){cover top}`, `![](chart.png){contain 75%}`,
+`![](shot.png){border round 80%}`.
 
 ```markdown
 ---
