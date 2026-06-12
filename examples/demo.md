@@ -203,7 +203,7 @@ layout: media-split
 Crews see the next job, the route, and the parts list — before they leave the depot.
 :::
 :::media
-![Depot](chart.svg)
+![Depot](chart.svg){cover top}
 :::
 
 ---

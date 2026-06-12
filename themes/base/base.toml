@@ -47,6 +47,10 @@ cell-pad-x = "0.9em"
 table-rule-width = "0.12cqmin"   # row hairline / `table-style: borders` weight
 radius     = "1cqmin"      # corner radius unit (code blocks, inline code)
 
+# Image decorations (`![](x){border|round|shadow}`); `round` reuses `--radius`.
+img-border = "0.2cqmin solid var(--rule)"
+img-shadow = "0 1cqmin 3cqmin rgba(0,0,0,0.22)"
+
 # Structural / feel defaults — themes rarely change these.
 frame    = "#000"
 stage-w  = "1920"          # design width  (drives stage aspect)

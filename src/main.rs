@@ -1,6 +1,7 @@
 mod assets;
 mod fragments;
 mod grid;
+mod image_opts;
 mod parser;
 mod pdf;
 mod pptx;

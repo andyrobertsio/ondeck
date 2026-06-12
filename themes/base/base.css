@@ -11,230 +11,480 @@
    (a fixed-aspect container), so everything scales with the stage — the
    on-screen view is the design, just scaled to fit, with letterbox bars. */
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
 
-html, body {
-  height: 100%;
-  background: var(--frame);
-  color: var(--fg);
-  font-family: var(--font);
-  -webkit-font-smoothing: antialiased;
-  line-height: var(--leading);
+html,
+body {
+    height: 100%;
+    background: var(--frame);
+    color: var(--fg);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+    line-height: var(--leading);
 }
 
 /* The deck fills the viewport and centres the stage (letterbox bars = --frame). */
 .deck {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: var(--frame);
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: var(--frame);
 }
 
 /* The fixed-aspect stage: as large as fits while preserving the design aspect. */
 .stage {
-  position: relative;
-  aspect-ratio: var(--stage-w) / var(--stage-h);
-  width: min(100%, calc(100dvh * var(--stage-w) / var(--stage-h)));
-  max-height: 100%;
-  overflow: hidden;
-  background: var(--bg);
-  container-type: size; /* chrome sizes against the stage */
+    position: relative;
+    aspect-ratio: var(--stage-w) / var(--stage-h);
+    width: min(100%, calc(100dvh * var(--stage-w) / var(--stage-h)));
+    max-height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    container-type: size; /* chrome sizes against the stage */
 }
 
 /* --- Slide stage ------------------------------------------------------- */
 .slide {
-  position: absolute;
-  inset: 0;
-  display: none;
-  overflow: hidden;
-  background-color: var(--bg);
-  /* Re-resolve text colour here so a per-slide --fg override (scheme:, or a
+    position: absolute;
+    inset: 0;
+    display: none;
+    overflow: hidden;
+    background-color: var(--bg);
+    /* Re-resolve text colour here so a per-slide --fg override (scheme:, or a
      template/layout token override) actually flips inherited text. */
-  color: var(--fg);
-  background-size: cover;
-  background-position: center;
-  container-type: size; /* block content + type size against the slide */
-  transition:
-    opacity var(--fx-dur) var(--fx-ease),
-    transform var(--fx-dur) var(--fx-ease);
+    color: var(--fg);
+    background-size: cover;
+    background-position: center;
+    container-type: size; /* block content + type size against the slide */
+    transition:
+        opacity var(--fx-dur) var(--fx-ease),
+        transform var(--fx-dur) var(--fx-ease);
 }
-.slide.active { display: block; opacity: 1; transform: none; z-index: 1; }
+.slide.active {
+    display: block;
+    opacity: 1;
+    transform: none;
+    z-index: 1;
+}
 /* Outgoing sits ABOVE the incoming during a transition, so a `fade` dissolves
    the old slide away over the (opaque) new one — no stage/frame flash through. */
-.slide.leaving { display: block; z-index: 2; }
-.slide.notrans { transition: none !important; } /* set initial states w/o animating */
+.slide.leaving {
+    display: block;
+    z-index: 2;
+}
+.slide.notrans {
+    transition: none !important;
+} /* set initial states w/o animating */
 
 /* Transition states (set by the runtime). Declared after .active/.leaving so
    they win the equal-specificity tie until the runtime removes them. */
-.slide.from-fade  { opacity: 0; }
-.slide.from-right { transform: translateX(100%); }
-.slide.from-left  { transform: translateX(-100%); }
-.slide.to-fade    { opacity: 0; }
-.slide.to-left    { transform: translateX(-100%); }
-.slide.to-right   { transform: translateX(100%); }
+.slide.from-fade {
+    opacity: 0;
+}
+.slide.from-right {
+    transform: translateX(100%);
+}
+.slide.from-left {
+    transform: translateX(-100%);
+}
+.slide.to-fade {
+    opacity: 0;
+}
+.slide.to-left {
+    transform: translateX(-100%);
+}
+.slide.to-right {
+    transform: translateX(100%);
+}
 
-.slide-overlay { position: absolute; inset: 0; z-index: 0; }
+.slide-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
 
 /* The universal grid substrate (cols×rows from the theme; default 64×36 =
    30×30px square cells). Fills the slide; margins come from the block rects,
    not slide padding. */
 .slide-content {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
-  display: grid;
-  grid-template-columns: repeat(var(--cols, 64), 1fr);
-  grid-template-rows: repeat(var(--rows, 36), 1fr);
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 64), 1fr);
+    grid-template-rows: repeat(var(--rows, 36), 1fr);
 }
 
 /* --- The block: a positioned grid item + its scale-to-fit inner wrapper. --
    A block is fixed (theme-filled image/text) or editable (author-filled); both
    are positioned the same way. The `.fit` wrapper holds `fit:scale` content. */
 .block {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;   /* align-y: top  (default; main axis = vertical) */
-  align-items: flex-start;       /* align-x: left (default; cross axis = horizontal) */
-  text-align: left;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;              /* content is authored to fit; overflow clips */
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start; /* align-y: top  (default; main axis = vertical) */
+    align-items: flex-start; /* align-x: left (default; cross axis = horizontal) */
+    text-align: left;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden; /* content is authored to fit; overflow clips */
 }
-.block .fit { transform-origin: center center; width: 100%; }
+.block .fit {
+    transform-origin: center center;
+    width: 100%;
+}
 /* Content images never blow out their block, even without an explicit fit. */
-.block img { max-width: 100%; height: auto; }
+.block img {
+    max-width: 100%;
+    height: auto;
+}
 
 /* Layer (z-stack within .slide-content): behind → main → front. */
-.block.layer-behind { z-index: 0; }
-.block.layer-front  { z-index: 5; }
+.block.layer-behind {
+    z-index: 0;
+}
+.block.layer-front {
+    z-index: 5;
+}
 
 /* Alignment hooks (the default value on each axis emits no class): align-y on
    the main/vertical axis defaults to top; align-x on the cross axis (plus
    text-align) defaults to left. The block itself carries the top-left default. */
-.block.ay-center { justify-content: center; }
-.block.ay-end    { justify-content: flex-end; }
-.block.ax-center { align-items: center;   text-align: center; }
-.block.ax-end    { align-items: flex-end; text-align: right; }
+.block.ay-center {
+    justify-content: center;
+}
+.block.ay-end {
+    justify-content: flex-end;
+}
+.block.ax-center {
+    align-items: center;
+    text-align: center;
+}
+.block.ax-end {
+    align-items: flex-end;
+    text-align: right;
+}
 
 /* Fit modes for media content (an `<img>` from Markdown). `scale` uses `.fit`. */
-.block.fit-cover img, .block.fit-contain img { width: 100%; height: 100%; display: block; }
-.block.fit-cover img { object-fit: cover; }
-.block.fit-contain img { object-fit: contain; }
-.block.fit-cover p, .block.fit-contain p { margin: 0; height: 100%; }
+.block.fit-cover img,
+.block.fit-contain img {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+.block.fit-cover img {
+    object-fit: cover;
+}
+.block.fit-contain img {
+    object-fit: contain;
+}
+.block.fit-cover p,
+.block.fit-contain p {
+    margin: 0;
+    height: 100%;
+}
+
+/* Crop framing for cover/contain images follows the block's align-x/align-y
+   (theme default; the deck author's `![](x){…}` inline object-position wins). */
+.block {
+    --img-x: left;
+    --img-y: top;
+}
+.block.ax-center {
+    --img-x: center;
+}
+.block.ax-end {
+    --img-x: right;
+}
+.block.ay-center {
+    --img-y: center;
+}
+.block.ay-end {
+    --img-y: bottom;
+}
+.block.fit-cover img,
+.block.fit-contain img,
+.block img.imgfit-cover,
+.block img.imgfit-contain {
+    object-position: var(--img-x) var(--img-y);
+}
+
+/* Inline image options (`![](src){…}` → .img-opt + inline style). The wrapping
+   <p> goes full-width so a `{n%}` scale resolves against the block (and the
+   image is placed by text-align/justify-content like any content); cover/contain
+   also need it full-height to frame against. */
+.block p:has(> img.img-opt) {
+    width: 100%;
+    margin: 0;
+}
+.block p:has(> img.imgfit-cover),
+.block p:has(> img.imgfit-contain) {
+    height: 100%;
+}
+/* A positioned image (`{center}`, `{center left}`, …) places itself in a grid
+   filling the block — its justify-self/align-self are set inline. Only opted in
+   here so a plain `{n%}` keeps natural flow next to text. */
+.block p:has(> img.img-placed) {
+    display: grid;
+    height: 100%;
+}
+
+/* Image decorations (`{border|round|shadow}`) — token-driven so a theme owns the
+   look. `round`/`border` hug the image for natural/scale/cover (with `contain`
+   they frame the box, since the fitted image's edges aren't measurable). */
+img.img-bordered {
+    border: var(--img-border);
+}
+img.img-round {
+    border-radius: var(--radius);
+}
+img.img-shadow {
+    box-shadow: var(--img-shadow);
+}
 
 /* --- image / raw: render outside the grid (full-bleed) ----------------- */
-.layout-image .slide-content { display: block; }
-.layout-image .block-body { position: absolute; inset: 0; }
-.layout-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.layout-image .block-body p { height: 100%; margin: 0; }
-.layout-image.fit-contain img { object-fit: contain; }
-.layout-raw .slide-content { display: block; }
+.layout-image .slide-content {
+    display: block;
+}
+.layout-image .block-body {
+    position: absolute;
+    inset: 0;
+}
+.layout-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.layout-image .block-body p {
+    height: 100%;
+    margin: 0;
+}
+.layout-image.fit-contain img {
+    object-fit: contain;
+}
+.layout-raw .slide-content {
+    display: block;
+}
 
 /* --- deck chrome (slide numbers, progress, footer) — colours via tokens - */
-.deck-number, .deck-footer {
-  position: absolute;
-  bottom: 2.5cqmin;
-  z-index: 20;
-  font-size: 1.5cqmin;
-  color: var(--muted);
-  font-family: var(--font);
+.deck-number,
+.deck-footer {
+    position: absolute;
+    bottom: 2.5cqmin;
+    z-index: 20;
+    font-size: 1.5cqmin;
+    color: var(--muted);
+    font-family: var(--font);
 }
-.deck-number { right: 3cqmin; }
-.deck-footer { left: 3cqmin; }
+.deck-number {
+    right: 3cqmin;
+}
+.deck-footer {
+    left: 3cqmin;
+}
 .deck-progress {
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 0.4cqmin;
-  z-index: 20;
-  background: var(--rule);
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 0.4cqmin;
+    z-index: 20;
+    background: var(--rule);
 }
-.deck-progress > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width var(--fx-dur) var(--fx-ease); }
+.deck-progress > i {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--accent);
+    transition: width var(--fx-dur) var(--fx-ease);
+}
 
 /* --- presenter view (?present=1): a notes/preview dashboard, dark chrome,
    coloured via tokens. The audience window stays the normal deck. ---------- */
-body.presenter { background: #0b0d12; overflow: hidden; }
-.presenter .deck { display: none; }
-.presenter-view { display: none; }
-body.presenter .presenter-view {
-  display: grid;
-  grid-template-rows: 1fr 28vh;
-  gap: 1.6vh;
-  box-sizing: border-box;
-  height: 100vh;
-  padding: 1.8vh 1.8vw;
-  color: var(--fg);
-  font-family: var(--font);
+body.presenter {
+    background: #0b0d12;
+    overflow: hidden;
 }
-.pv-main { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); gap: 1.8vw; min-height: 0; }
-.pv-col { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
-.pv-aside { gap: 1.6vh; }
-.pv-next-wrap { display: flex; flex-direction: column; min-height: 0; }
-.pv-label { font-size: 1.5vh; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.7vh; }
-.pv-count { color: var(--fg); opacity: 0.65; }
+.presenter .deck {
+    display: none;
+}
+.presenter-view {
+    display: none;
+}
+body.presenter .presenter-view {
+    display: grid;
+    grid-template-rows: 1fr 28vh;
+    gap: 1.6vh;
+    box-sizing: border-box;
+    height: 100vh;
+    padding: 1.8vh 1.8vw;
+    color: var(--fg);
+    font-family: var(--font);
+}
+.pv-main {
+    display: grid;
+    grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr);
+    gap: 1.8vw;
+    min-height: 0;
+}
+.pv-col {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+}
+.pv-aside {
+    gap: 1.6vh;
+}
+.pv-next-wrap {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+.pv-label {
+    font-size: 1.5vh;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.7vh;
+}
+.pv-count {
+    color: var(--fg);
+    opacity: 0.65;
+}
 /* a 16:9 preview box; the mini .stage fills it and slides render via cqmin */
 .pv-screen {
-  position: relative;
-  width: 100%;
-  aspect-ratio: var(--stage-w) / var(--stage-h);
-  background: var(--bg);
-  border: 1px solid var(--rule);
-  border-radius: 0.8vh;
-  overflow: hidden;
+    position: relative;
+    width: 100%;
+    aspect-ratio: var(--stage-w) / var(--stage-h);
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    border-radius: 0.8vh;
+    overflow: hidden;
 }
 .pv-screen .stage {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-  max-height: none;
-  aspect-ratio: auto;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
 }
-.pv-meta { margin-top: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 0.4vh; }
-.pv-timer { font-size: 6vh; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
-.pv-clock { font-size: 2vh; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pv-meta {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4vh;
+}
+.pv-timer {
+    font-size: 6vh;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.pv-clock {
+    font-size: 2vh;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
 .pv-notes {
-  overflow-y: auto;
-  background: var(--bg-2);
-  border-radius: 0.8vh;
-  padding: 2vh 2vw;
-  font-size: 2.4vh;
-  line-height: 1.5;
+    overflow-y: auto;
+    background: var(--bg-2);
+    border-radius: 0.8vh;
+    padding: 2vh 2vw;
+    font-size: 2.4vh;
+    line-height: 1.5;
 }
-.pv-notes h1, .pv-notes h2, .pv-notes h3 { font-size: 3vh; margin-bottom: 0.4em; }
-.pv-notes p { margin: 0 0 0.6em; }
-.pv-notes ul, .pv-notes ol { margin: 0 0 0.6em 1.2em; }
-.pv-notes strong { color: var(--fg); }
-.pv-empty { color: var(--muted); font-style: italic; }
-.pv-empty-screen::after { content: "—"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); }
+.pv-notes h1,
+.pv-notes h2,
+.pv-notes h3 {
+    font-size: 3vh;
+    margin-bottom: 0.4em;
+}
+.pv-notes p {
+    margin: 0 0 0.6em;
+}
+.pv-notes ul,
+.pv-notes ol {
+    margin: 0 0 0.6em 1.2em;
+}
+.pv-notes strong {
+    color: var(--fg);
+}
+.pv-empty {
+    color: var(--muted);
+    font-style: italic;
+}
+.pv-empty-screen::after {
+    content: "—";
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+}
 
 /* --- fragments (incremental reveal) ----------------------------------- */
 .fragment {
-  opacity: 0;
-  transition:
-    opacity var(--fx-dur) var(--fx-ease),
-    transform var(--fx-dur) var(--fx-ease),
-    filter var(--fx-dur) var(--fx-ease);
+    opacity: 0;
+    transition:
+        opacity var(--fx-dur) var(--fx-ease),
+        transform var(--fx-dur) var(--fx-ease),
+        filter var(--fx-dur) var(--fx-ease);
 }
 
 /* Each transition defines only the hidden "from" state. */
-.fragment.fx-fade {}
-.fragment.fx-fade-up    { transform: translateY(1.2em); }
-.fragment.fx-fade-down  { transform: translateY(-1.2em); }
-.fragment.fx-fade-left  { transform: translateX(1.2em); }
-.fragment.fx-fade-right { transform: translateX(-1.2em); }
-.fragment.fx-zoom       { transform: scale(0.85); }
-.fragment.fx-zoom-out   { transform: scale(1.15); }
-.fragment.fx-blur       { filter: blur(10px); }
-.fragment.fx-rise       { transform: translateY(1.2em) scale(0.97); }
-.fragment.fx-none       { transition: none; }
+.fragment.fx-fade {
+}
+.fragment.fx-fade-up {
+    transform: translateY(1.2em);
+}
+.fragment.fx-fade-down {
+    transform: translateY(-1.2em);
+}
+.fragment.fx-fade-left {
+    transform: translateX(1.2em);
+}
+.fragment.fx-fade-right {
+    transform: translateX(-1.2em);
+}
+.fragment.fx-zoom {
+    transform: scale(0.85);
+}
+.fragment.fx-zoom-out {
+    transform: scale(1.15);
+}
+.fragment.fx-blur {
+    filter: blur(10px);
+}
+.fragment.fx-rise {
+    transform: translateY(1.2em) scale(0.97);
+}
+.fragment.fx-none {
+    transition: none;
+}
 
 /* Revealed must come AFTER the fx recipes (equal specificity → source order). */
-.fragment.revealed { opacity: 1; transform: none; filter: none; }
+.fragment.revealed {
+    opacity: 1;
+    transform: none;
+    filter: none;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .fragment { transition-duration: 0.001s; transform: none; filter: none; }
+    .fragment {
+        transition-duration: 0.001s;
+        transform: none;
+        filter: none;
+    }
 }
 
 /* === Layout-agnostic, token-driven look ================================
@@ -244,133 +494,299 @@ body.presenter .presenter-view {
 
 /* Scheme overrides (manual — never auto-applied): remap text for legibility
    over a custom background. A theme overrides these if its palette needs to. */
-.slide.scheme-dark { --fg: #f5f7ff; --muted: #c4cce8; }
-.slide.scheme-light { --fg: #14161d; --muted: #4a5170; }
+.slide.scheme-dark {
+    --fg: #f5f7ff;
+    --muted: #c4cce8;
+}
+.slide.scheme-light {
+    --fg: #14161d;
+    --muted: #4a5170;
+}
 
 /* Typography. Sizes/weights/leading are tokens (see base.toml) so a theme
    retunes the scale by setting `--h1-size`, `--h2-weight`, `--leading`, … with
    no CSS override. (Letter-spacing is a look choice, left to the theme.) */
-h1 { font-size: var(--h1-size); font-weight: var(--h1-weight); line-height: var(--h1-leading); }
-h2 { font-size: var(--h2-size); font-weight: var(--h2-weight); color: var(--muted); line-height: var(--h2-leading); }
-h3 { font-size: var(--h3-size); font-weight: var(--h3-weight); line-height: var(--h3-leading); }
-p  { font-size: var(--p-size); line-height: var(--p-leading); }
-a  { color: var(--accent); }
-strong { color: var(--fg); font-weight: 700; }
-em { color: var(--accent-2); font-style: normal; }
-code { font-family: var(--mono); background: var(--bg-2); padding: 0.1em 0.35em; border-radius: calc(var(--radius) * 0.4); font-size: 0.9em; }
+h1 {
+    font-size: var(--h1-size);
+    font-weight: var(--h1-weight);
+    line-height: var(--h1-leading);
+}
+h2 {
+    font-size: var(--h2-size);
+    font-weight: var(--h2-weight);
+    color: var(--muted);
+    line-height: var(--h2-leading);
+}
+h3 {
+    font-size: var(--h3-size);
+    font-weight: var(--h3-weight);
+    line-height: var(--h3-leading);
+}
+p {
+    font-size: var(--p-size);
+    line-height: var(--p-leading);
+    margin-bottom: 1em;
+}
+a {
+    color: var(--accent);
+}
+strong {
+    color: var(--fg);
+    font-weight: 700;
+}
+em {
+    color: var(--accent-2);
+    font-style: normal;
+}
+code {
+    font-family: var(--mono);
+    background: var(--bg-2);
+    padding: 0.1em 0.35em;
+    border-radius: calc(var(--radius) * 0.4);
+    font-size: 0.9em;
+}
 
 /* Code blocks. The `code` *layout* bumps sizing in its own theme.css. */
 pre {
-  background: var(--bg-2);
-  border-radius: var(--radius);
-  padding: var(--code-pad);
-  overflow: auto;
-  line-height: var(--code-leading);
-  font-family: var(--mono);
-  font-size: var(--code-size);
-  color: var(--fg);
+    background: var(--bg-2);
+    border-radius: var(--radius);
+    padding: var(--code-pad);
+    overflow: auto;
+    line-height: var(--code-leading);
+    font-family: var(--mono);
+    font-size: var(--code-size);
+    color: var(--fg);
 }
-pre code { background: none; padding: 0; border-radius: 0; font-size: inherit; color: inherit; font-family: var(--mono); }
+pre code {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    font-size: inherit;
+    color: inherit;
+    font-family: var(--mono);
+}
 
 /* Syntax tokens — class-based (syntect, prefix `syn-`), coloured from tokens
    so highlighting is theme-native and a theme can override it. */
-pre .syn-comment { color: var(--muted); font-style: italic; }
-pre .syn-keyword, pre .syn-storage { color: var(--accent); }
-pre .syn-string { color: var(--accent-2); }
-pre .syn-constant { color: var(--accent-2); }
-pre .syn-entity, pre .syn-support { color: var(--accent); }
-pre .syn-variable { color: var(--fg); }
-pre .syn-punctuation { color: var(--muted); }
+pre .syn-comment {
+    color: var(--muted);
+    font-style: italic;
+}
+pre .syn-keyword,
+pre .syn-storage {
+    color: var(--accent);
+}
+pre .syn-string {
+    color: var(--accent-2);
+}
+pre .syn-constant {
+    color: var(--accent-2);
+}
+pre .syn-entity,
+pre .syn-support {
+    color: var(--accent);
+}
+pre .syn-variable {
+    color: var(--fg);
+}
+pre .syn-punctuation {
+    color: var(--muted);
+}
 
 /* Tables — styled from tokens so they work in any layout (the `table` layout
    just frames one as the slide's focus). */
-table { width: 100%; border-collapse: collapse; font-size: var(--table-size); line-height: var(--table-leading); }
-th, td { padding: var(--cell-pad-y) var(--cell-pad-x); text-align: left; vertical-align: top; }
-thead th { color: var(--fg); font-weight: 700; border-bottom: 0.25cqmin solid var(--rule); }
-tbody td { border-bottom: var(--table-rule-width) solid var(--rule); }
-tbody tr:last-child td { border-bottom: none; }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--table-size);
+    line-height: var(--table-leading);
+}
+th,
+td {
+    padding: var(--cell-pad-y) var(--cell-pad-x);
+    text-align: left;
+    vertical-align: top;
+}
+thead th {
+    color: var(--fg);
+    font-weight: 700;
+    border-bottom: 0.25cqmin solid var(--rule);
+}
+tbody td {
+    border-bottom: var(--table-rule-width) solid var(--rule);
+}
+tbody tr:last-child td {
+    border-bottom: none;
+}
 /* respect Markdown column alignment (:--, --:, :--:) */
-th[align="center"], td[align="center"] { text-align: center; }
-th[align="right"], td[align="right"] { text-align: right; }
-th[align="left"], td[align="left"] { text-align: left; }
+th[align="center"],
+td[align="center"] {
+    text-align: center;
+}
+th[align="right"],
+td[align="right"] {
+    text-align: right;
+}
+th[align="left"],
+td[align="left"] {
+    text-align: left;
+}
 
 /* row-headers: first column styled as labels */
-.row-headers tbody td:first-child { font-weight: 700; color: var(--fg); }
+.row-headers tbody td:first-child {
+    font-weight: 700;
+    color: var(--fg);
+}
 
 /* Table variants (per-slide `table-spacing:` / `table-style:` → slide classes).
    Spacing just remaps the cell-pad tokens; style toggles row/border treatment.
    `default` spacing and `lines` style are the no-class defaults. */
-.slide.table-compact     { --cell-pad-y: 0.3em;  --cell-pad-x: 0.6em; }
-.slide.table-comfortable { --cell-pad-y: 0.85em; --cell-pad-x: 1.15em; }
-.slide.table-stripes tbody tr:nth-child(even) > * { background: var(--bg-2); }
-.slide.table-borders :is(th, td) { border: var(--table-rule-width) solid var(--rule); }
-.slide.table-none :is(th, td) { border: none; }
+.slide.table-compact {
+    --cell-pad-y: 0.3em;
+    --cell-pad-x: 0.6em;
+}
+.slide.table-comfortable {
+    --cell-pad-y: 0.85em;
+    --cell-pad-x: 1.15em;
+}
+.slide.table-stripes tbody tr:nth-child(even) > * {
+    background: var(--bg-2);
+}
+.slide.table-borders :is(th, td) {
+    border: var(--table-rule-width) solid var(--rule);
+}
+.slide.table-none :is(th, td) {
+    border: none;
+}
 
 /* highlight a column (1–8): tinted background + accent header */
-.hl-col-1 tr > :nth-child(1) { background: var(--bg-2); }
-.hl-col-2 tr > :nth-child(2) { background: var(--bg-2); }
-.hl-col-3 tr > :nth-child(3) { background: var(--bg-2); }
-.hl-col-4 tr > :nth-child(4) { background: var(--bg-2); }
-.hl-col-5 tr > :nth-child(5) { background: var(--bg-2); }
-.hl-col-6 tr > :nth-child(6) { background: var(--bg-2); }
-.hl-col-7 tr > :nth-child(7) { background: var(--bg-2); }
-.hl-col-8 tr > :nth-child(8) { background: var(--bg-2); }
-.hl-col-1 thead > tr > :nth-child(1) { color: var(--accent); }
-.hl-col-2 thead > tr > :nth-child(2) { color: var(--accent); }
-.hl-col-3 thead > tr > :nth-child(3) { color: var(--accent); }
-.hl-col-4 thead > tr > :nth-child(4) { color: var(--accent); }
-.hl-col-5 thead > tr > :nth-child(5) { color: var(--accent); }
-.hl-col-6 thead > tr > :nth-child(6) { color: var(--accent); }
-.hl-col-7 thead > tr > :nth-child(7) { color: var(--accent); }
-.hl-col-8 thead > tr > :nth-child(8) { color: var(--accent); }
+.hl-col-1 tr > :nth-child(1) {
+    background: var(--bg-2);
+}
+.hl-col-2 tr > :nth-child(2) {
+    background: var(--bg-2);
+}
+.hl-col-3 tr > :nth-child(3) {
+    background: var(--bg-2);
+}
+.hl-col-4 tr > :nth-child(4) {
+    background: var(--bg-2);
+}
+.hl-col-5 tr > :nth-child(5) {
+    background: var(--bg-2);
+}
+.hl-col-6 tr > :nth-child(6) {
+    background: var(--bg-2);
+}
+.hl-col-7 tr > :nth-child(7) {
+    background: var(--bg-2);
+}
+.hl-col-8 tr > :nth-child(8) {
+    background: var(--bg-2);
+}
+.hl-col-1 thead > tr > :nth-child(1) {
+    color: var(--accent);
+}
+.hl-col-2 thead > tr > :nth-child(2) {
+    color: var(--accent);
+}
+.hl-col-3 thead > tr > :nth-child(3) {
+    color: var(--accent);
+}
+.hl-col-4 thead > tr > :nth-child(4) {
+    color: var(--accent);
+}
+.hl-col-5 thead > tr > :nth-child(5) {
+    color: var(--accent);
+}
+.hl-col-6 thead > tr > :nth-child(6) {
+    color: var(--accent);
+}
+.hl-col-7 thead > tr > :nth-child(7) {
+    color: var(--accent);
+}
+.hl-col-8 thead > tr > :nth-child(8) {
+    color: var(--accent);
+}
 
 /* highlight a body row (1–8) */
-.hl-row-1 tbody tr:nth-child(1) > * { background: var(--bg-2); }
-.hl-row-2 tbody tr:nth-child(2) > * { background: var(--bg-2); }
-.hl-row-3 tbody tr:nth-child(3) > * { background: var(--bg-2); }
-.hl-row-4 tbody tr:nth-child(4) > * { background: var(--bg-2); }
-.hl-row-5 tbody tr:nth-child(5) > * { background: var(--bg-2); }
-.hl-row-6 tbody tr:nth-child(6) > * { background: var(--bg-2); }
-.hl-row-7 tbody tr:nth-child(7) > * { background: var(--bg-2); }
-.hl-row-8 tbody tr:nth-child(8) > * { background: var(--bg-2); }
+.hl-row-1 tbody tr:nth-child(1) > * {
+    background: var(--bg-2);
+}
+.hl-row-2 tbody tr:nth-child(2) > * {
+    background: var(--bg-2);
+}
+.hl-row-3 tbody tr:nth-child(3) > * {
+    background: var(--bg-2);
+}
+.hl-row-4 tbody tr:nth-child(4) > * {
+    background: var(--bg-2);
+}
+.hl-row-5 tbody tr:nth-child(5) > * {
+    background: var(--bg-2);
+}
+.hl-row-6 tbody tr:nth-child(6) > * {
+    background: var(--bg-2);
+}
+.hl-row-7 tbody tr:nth-child(7) > * {
+    background: var(--bg-2);
+}
+.hl-row-8 tbody tr:nth-child(8) > * {
+    background: var(--bg-2);
+}
 
 /* --- print / PDF ------------------------------------------------------- */
-@page { size: 1920px 1080px; margin: 0; }
-body.print .deck { display: block; height: auto; overflow: visible; }
+@page {
+    size: 1920px 1080px;
+    margin: 0;
+}
+body.print .deck {
+    display: block;
+    height: auto;
+    overflow: visible;
+}
 body.print .stage {
-  position: static;
-  width: auto;
-  height: auto;
-  max-height: none;
-  aspect-ratio: auto;
-  overflow: visible;
-  container-type: normal;
+    position: static;
+    width: auto;
+    height: auto;
+    max-height: none;
+    aspect-ratio: auto;
+    overflow: visible;
+    container-type: normal;
 }
 body.print .slide {
-  position: relative;
-  inset: auto;
-  display: block;
-  width: 1920px;
-  height: 1080px;
-  container-type: size;
-  break-after: page;
-  page-break-after: always;
+    position: relative;
+    inset: auto;
+    display: block;
+    width: 1920px;
+    height: 1080px;
+    container-type: size;
+    break-after: page;
+    page-break-after: always;
 }
-.notes { display: none; }
+.notes {
+    display: none;
+}
 /* Chrome is a screen affordance; single elements can't paginate, so hide it. */
 body.print .deck-number,
 body.print .deck-footer,
-body.print .deck-progress { display: none; }
+body.print .deck-progress {
+    display: none;
+}
 
 /* Shot mode (?shot=N): like print, but show only the one targeted slide,
    used to capture a PNG per slide for PPTX export. */
-body.shot .slide { display: none !important; }
-body.shot .slide.shot-active { display: block !important; }
+body.shot .slide {
+    display: none !important;
+}
+body.shot .slide.shot-active {
+    display: block !important;
+}
 
 /* Print/PDF: every fragment jumps to its final state, no motion. */
 body.print .fragment {
-  opacity: 1 !important;
-  transform: none !important;
-  filter: none !important;
-  transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    transition: none !important;
 }

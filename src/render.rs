@@ -204,7 +204,7 @@ fn slide_styling(slide: &Slide) -> (String, Vec<String>, Option<String>) {
 
 /// Render Markdown, then apply fragment markers (shared slide-wide counter).
 fn md_frag(text: &str, plugins: &Plugins, cfg: &FragConfig, counter: &mut u32) -> String {
-    fragments::apply(&md(text, plugins), cfg, counter)
+    fragments::apply(&crate::image_opts::apply(&md(text, plugins)), cfg, counter)
 }
 
 /// CSS classes for a block: name + layer/fit/alignment hooks (Main/Center/Scale
@@ -806,6 +806,20 @@ mod tests {
         e.image_size = Some("80%".to_string());
         let html3 = emit_image_block(&e, &e.rect, "url('x.png')");
         assert!(html3.contains("right top/80% no-repeat"), "{html3}");
+    }
+
+    #[test]
+    fn image_opts_applied_in_block_content() {
+        let html = build(
+            "---\ntheme: default\n---\n\n---\nlayout: bullets\n---\n![](x.png){cover top 60%}\n",
+        );
+        assert!(html.contains("img-opt"));
+        assert!(html.contains("imgfit-cover"));
+        assert!(html.contains("img-placed")); // a position keyword opts into placement
+        assert!(html.contains("object-position:center top;"));
+        assert!(html.contains("justify-self:center;align-self:start;"));
+        assert!(html.contains("max-width:60%;"));
+        assert!(!html.contains("{cover top 60%}")); // marker stripped
     }
 
     #[test]

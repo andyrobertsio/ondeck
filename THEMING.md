@@ -131,7 +131,8 @@ base's neutral values until it sets its own.
 | `code-pad` | `2.5cqmin` | Code-block padding |
 | `cell-pad-y` / `cell-pad-x` | `0.55em` / `0.9em` | Table cell padding (the `table-spacing` variants remap these) |
 | `table-rule-width` | `0.12cqmin` | Table row hairline / `table-style: borders` weight |
-| `radius` | `1cqmin` | Corner radius unit (code blocks; inline `code` uses 0.4×) |
+| `radius` | `1cqmin` | Corner radius unit (code blocks; inline `code` uses 0.4×; image `round`) |
+| `img-border` / `img-shadow` | `0.2cqmin solid var(--rule)` / soft drop | Image `{border}` / `{shadow}` decorations |
 | `pad` | `8cqmin` | Padding unit used by the media-split body |
 | `font` | system sans stack | Main font (`font-family`) |
 | `mono` | system mono stack | Code/monospace font |
@@ -180,8 +181,8 @@ Every block needs `at`; the rest are optional. Set on any block in a
 | `text` | Markdown string | — | Text content → **fixed** |
 | `layer` | `front` \| `behind` | `front` (fixed) | Stack vs main content (`.block.layer-*`) |
 | `opacity` | `0`–`1` | `1` | Block opacity (e.g. a faint watermark) |
-| `align-x` | `left` \| `center` \| `right` | `left` | Horizontal alignment (`.block.ax-center`/`.ax-end`). On an `image` block → `background-position` X |
-| `align-y` | `top` \| `center` \| `bottom` | `top` | Vertical alignment (`.block.ay-center`/`.ay-end`). On an `image` block → `background-position` Y |
+| `align-x` | `left` \| `center` \| `right` | `left` | Horizontal alignment (`.block.ax-center`/`.ax-end`). → `background-position` X on a fixed `image` block, and `object-position` X for a `cover`/`contain` content image |
+| `align-y` | `top` \| `center` \| `bottom` | `top` | Vertical alignment (`.block.ay-center`/`.ay-end`). → `background-position` Y on a fixed `image` block, and `object-position` Y for a `cover`/`contain` content image |
 | `fit` | `none` \| `scale` \| `cover` \| `contain` | `none` | Content sizing (`.block.fit-*`); see [Overflow](#overflow). On an `image` block → `background-size` (`cover` crops, else `contain`) |
 | `image-size` | any CSS `background-size` (`80%`, `4cqmin`, `auto`, …) | — | `image` blocks only: explicit `background-size`, overriding `fit`'s shorthand |
 | `transition` | a fragment fx name | theme/slide default | Fragment transition for this block's content |
@@ -300,6 +301,7 @@ specificity wins; add a class or `!important` only if you must).
 | `.block.layer-behind` / `.layer-front` | Stack band vs main content |
 | `.block.ax-*` / `.block.ay-*` | Horizontal / vertical alignment hooks |
 | `.block.fit-cover` / `.fit-contain` | Media-sizing hooks (size the inner `<img>`) |
+| `img.img-opt` (+ `.imgfit-cover/-contain`, `.img-placed`, `.img-bordered`, `.img-round`, `.img-shadow`) | A content image with inline `{…}` options — restyle the decorations here |
 | `.layout-<name>` / `.template-<name>` | On the slide: its layout and selected template |
 | `.slide-overlay` | Background-overlay scrim element (when `background-overlay` set) |
 
