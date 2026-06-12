@@ -185,6 +185,9 @@ Every block needs `at`; the rest are optional. Set on any block in a
 | `align-y` | `top` \| `center` \| `bottom` | `top` | Vertical alignment (`.block.ay-center`/`.ay-end`). → `background-position` Y on a fixed `image` block, and `object-position` Y for a `cover`/`contain` content image |
 | `fit` | `none` \| `scale` \| `cover` \| `contain` | `none` | Content sizing (`.block.fit-*`); see [Overflow](#overflow). On an `image` block → `background-size` (`cover` crops, else `contain`) |
 | `image-size` | any CSS `background-size` (`80%`, `4cqmin`, `auto`, …) | — | `image` blocks only: explicit `background-size`, overriding `fit`'s shorthand |
+| `column` | a name | — | Flow this block in a logical column (see [Columns](#logical-columns)); blocks sharing a name stack at their bounding-box rect |
+| `expandable-y` | `true` \| `false` | `false` | In a `column`: grow past the nominal `at` height with content, pushing siblings down |
+| `fill` | `true` \| `false` | `false` | In a `column`: absorb the remaining space |
 | `transition` | a fragment fx name | theme/slide default | Fragment transition for this block's content |
 | `repeatable` | `true` \| `false` | `false` | A per-entry stamp (editable only) |
 | `repeatable-direction` | `up`\|`down`\|`left`\|`right` | `down` | Flow direction of copies |
@@ -281,6 +284,56 @@ flow from the anchor `at` along `repeatable-direction` by *(block extent +
 limit-sized track by `repeatable-align` (`center` centres a partial count). This
 is how `stat`'s `figure` works — define your own for timelines, logo walls, etc.
 
+### Logical columns
+
+By default blocks are placed at fixed grid rects, so a too-long heading just
+clips. A **column** lets blocks **flow** so one can grow and push the rest —
+solving the "long title eats the content" problem. Give the stacked blocks a
+shared `column` name; they render in a flex column placed at their **bounding-box
+rect**, ordered by `at`. A **gap** between two members' `at` rows is kept as a
+fixed spacer, so it survives expansion (a grown block keeps the gap below it).
+Each member's role:
+
+- default → **fixed** height (its `at` rows).
+- `expandable-y = true` → grows with content past the nominal height, pushing
+  siblings (and any gap) down.
+- `fill = true` → absorbs the remaining space (the usual body/content block).
+
+```toml
+[layout.split.blocks]
+eyebrow = { at = "x4 y2 x23 y3",  column = "left" }
+head    = { at = "x4 y4 x23 y11", column = "left", expandable-y = true }
+body    = { at = "x4 y12 x23 y32", column = "left", fill = true }
+panel   = { at = "x27 y1 x64 y36", layer = "behind", image = "..." }  # grid-placed as usual
+```
+
+With a short title the layout is **identical to the fixed grid**; a long title
+makes `head` grow and `body` shrink to fit, all within the column rect (which
+clips if even that overflows). The wrapper is `.block-column` /
+`.block-column-<name>`.
+
+**Bands (side-by-side within a column).** Column members that share a **starting
+row** (their tops align) form one horizontal **band** (a `.block-band` flex row,
+members sized by their `at` x-spans) — so a heading can sit *above* a two-column
+body and push *both* columns down together. (Members with different tops stack,
+even if their inclusive `at` rects touch at a boundary row.)
+
+```toml
+[layout.two-col.blocks]
+eyebrow = { at = "x4 y2 x60 y3",  column = "main" }
+head    = { at = "x4 y4 x60 y8",  column = "main", expandable-y = true }
+left    = { at = "x4 y10 x30 y34", column = "main", fill = true }   # same y →
+right   = { at = "x34 y10 x60 y34", column = "main", fill = true }  # one band
+```
+
+A band's role is taken from its members (`fill` if any is, else `expandable-y`,
+else fixed); horizontal gaps between members are preserved like vertical ones.
+
+**Caveats:** member heights are content-dependent (opt-in non-determinism); a
+column usually wants exactly one `fill`; within a band members are fixed-width by
+x-span (vertical growth is the column's job); repeatables aren't supported inside
+a column.
+
 ## theme.css: the CSS vocabulary
 
 Everything below is engine-stable — these classes/elements are what `theme.css`
@@ -297,6 +350,8 @@ specificity wins; add a class or `!important` only if you must).
 | `.slide.active` / `.slide.leaving` | Current / outgoing-during-transition |
 | `.slide-content` | The `cols`×`rows` grid |
 | `.block`, `.block-<name>` | A placed grid region (e.g. `.block-body`, `.block-left`) |
+| `.block-column`, `.block-column-<name>` | A logical column (flex wrapper) holding `column`-grouped blocks |
+| `.block-band` | A horizontal band within a column (same-y members, side by side) |
 | `.block .fit` | Scale-to-fit wrapper inside a `fit:scale` block |
 | `.block.layer-behind` / `.layer-front` | Stack band vs main content |
 | `.block.ax-*` / `.block.ay-*` | Horizontal / vertical alignment hooks |
@@ -322,6 +377,7 @@ the implicit single-sink `body`/`head`) per layout, each rendered as
 | title | `layout-title` | `body` | `.layout-title h1/h2/p` (h2 & p are the subtitle/meta) |
 | section | `layout-section` | `body` | `.layout-section h1` (accent, centered) |
 | bullets | `layout-bullets` | `body` | `li`, `ul > li::before` (marker), `ol > li::before`, `li li` (sub-items) |
+| lede | `layout-lede` | `head`, `body` (a [column](#logical-columns)) | `head` is `expandable-y` (a long title grows + pushes), `body` is `fill` |
 | statement | `layout-statement` | `body` | `.layout-statement h1` (centered) |
 | quote | `layout-quote` | `body`, `cite` | `.block-body::before` (opening “ mark), `.block-cite p::before` (— dash) |
 | two-col | `layout-two-col` | `head`, `left`, `right` | `.block-head` (bottom-aligned) |

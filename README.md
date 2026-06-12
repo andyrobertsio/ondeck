@@ -31,8 +31,8 @@ headless browser over that same output.
 ## Features
 
 - **Markdown source**, slides split by `---`, with per-slide frontmatter.
-- **Layout vocabulary**: title, section, bullets, statement, quote, two-col,
-  media-split, stat, compare, code, table, image, raw, free.
+- **Layout vocabulary**: title, section, bullets, lede, statement, quote,
+  two-col, media-split, stat, compare, code, table, image, raw, free.
 - **Fixed-aspect stage** (16:9, 1920×1080) that scales to any window with
   letterbox bars — the on-screen view matches the export exactly.
 - **64×36 grid** of **blocks** (the one placed-region primitive) with a
@@ -176,6 +176,7 @@ a `:::name` per block.
 | `title` | `#` title, `##` subtitle, rest meta | Opening slide |
 | `section` | body | Section divider |
 | `bullets` *(default)* | body | The workhorse |
+| `lede` | `:::head` / `:::body` | Heading + body in a column; a long title grows and pushes the body down |
 | `statement` | body | Big centered idea |
 | `quote` ✳ | `:::body` + `:::cite` | Attributed pull-quote |
 | `two-col` ✳ | `:::head` / `:::left` / `:::right` | Side by side |

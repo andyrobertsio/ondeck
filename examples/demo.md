@@ -28,6 +28,16 @@ layout: bullets
   - zero downtime
 
 ---
+layout: lede
+---
+:::head
+# This is a deliberately very long headline, written to wrap across four or five lines so it clearly outgrows its nominal slot and pushes the body down
+:::
+:::body
+The `lede` layout puts the heading and this text in a logical **column**: a long title *grows* and pushes the body down instead of clipping, while a short title leaves it exactly where the grid placed it.
+:::
+
+---
 layout: stat
 ---
 :::head

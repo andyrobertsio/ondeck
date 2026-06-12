@@ -145,6 +145,26 @@ body {
     height: auto;
 }
 
+/* A logical column: blocks (with `column = "name"`) flow in a flex column placed
+   at their bounding-box rect, so an `expandable-y` block grows with its content
+   and pushes the rest; a `fill` block absorbs the remainder. Member heights come
+   from their `at` rows; the column clips at its rect. */
+.block-column {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+/* A band: column members sharing a y-range, laid out side by side (sized by
+   their `at` x-spans) and flowing as one item in the column. */
+.block-band {
+    display: flex;
+    flex-direction: row;
+    min-width: 0;
+    min-height: 0;
+}
+
 /* Layer (z-stack within .slide-content): behind → main → front. */
 .block.layer-behind {
     z-index: 0;

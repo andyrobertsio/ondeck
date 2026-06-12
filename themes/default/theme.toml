@@ -31,6 +31,12 @@ body = { at = "x7 y13 x58 y24", align-x = "center", align-y = "center" }
 [layout.bullets.blocks]
 body = { at = "x7 y5 x58 y32" }
 
+# lede: a heading + body in a logical column — a long title grows and pushes the
+# body down instead of clipping (a short one is identical to a fixed grid).
+[layout.lede.blocks]
+head = { at = "x7 y6 x44 y14", column = "main", expandable-y = true }
+body = { at = "x7 y15 x44 y31", column = "main", fill = true }
+
 [layout.statement.blocks]
 body = { at = "x9 y9 x56 y28", align-x = "center", align-y = "center" }
 
