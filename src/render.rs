@@ -236,6 +236,9 @@ fn block_classes(b: &Block) -> String {
 
 fn block_style(b: &Block, rect: &Rect, extra: &str) -> String {
     let mut s = rect.style();
+    if let Some(c) = &b.background_color {
+        s.push_str(&format!("background-color:{c};"));
+    }
     if let Some(o) = b.opacity {
         s.push_str(&format!("opacity:{o};"));
     }
@@ -343,7 +346,9 @@ fn render_one_block(
                     } else {
                         String::new()
                     };
-                if content.trim().is_empty() {
+                // A painted block (background-color) is decorative furniture: it
+                // renders even with no content. Others vanish when empty.
+                if content.trim().is_empty() && b.background_color.is_none() {
                     String::new()
                 } else {
                     emit_block(b, &rect, &content)
@@ -407,10 +412,14 @@ fn member_content(
                 format!("background:{url} center/{size} no-repeat;"),
             )
         }
-        _ => (
-            block_inner(b, authored, plugins, cfg, counter, sink),
-            String::new(),
-        ),
+        _ => {
+            let bg = b
+                .background_color
+                .as_ref()
+                .map(|c| format!("background-color:{c};"))
+                .unwrap_or_default();
+            (block_inner(b, authored, plugins, cfg, counter, sink), bg)
+        }
     }
 }
 
@@ -563,8 +572,14 @@ fn build_blocks(
         ));
     }
 
-    // Single-sink: loose Markdown fills the sole editable block.
-    let editable: Vec<&Block> = layout.blocks.iter().filter(|b| b.is_editable()).collect();
+    // Single-sink: loose Markdown fills the sole editable block. A painted block
+    // (background-color) is decorative furniture, so it never becomes the sink —
+    // address it by name (`:::panel`) to put content over the fill.
+    let editable: Vec<&Block> = layout
+        .blocks
+        .iter()
+        .filter(|b| b.is_editable() && b.background_color.is_none())
+        .collect();
     let sink = if editable.len() == 1 {
         Some(editable[0].name.as_str())
     } else {
@@ -1085,6 +1100,7 @@ mod tests {
             align_y: Align::Start,
             fit: Fit::Contain,
             image_size: None,
+            background_color: None,
             transition: None,
             repeat: None,
             column: None,
@@ -1120,6 +1136,61 @@ mod tests {
         assert!(html.contains("justify-self:center;align-self:start;"));
         assert!(html.contains("max-width:60%;"));
         assert!(!html.contains("{cover top 60%}")); // marker stripped
+    }
+
+    #[test]
+    fn painted_block_renders_without_content_and_is_excluded_from_sink() {
+        let toml = concat!(
+            "name=\"x\"\n",
+            "[layout.panel.blocks]\n",
+            "rail = { at = \"x1 y1 x10 y36\", background-color = \"var(--accent)\" }\n",
+            "body = { at = \"x12 y5 x60 y32\" }\n",
+        );
+        // Loose Markdown, no markers: it must flow into `body` (the painted `rail`
+        // is excluded from the sink), and `rail` still paints with no content.
+        let html = build_themed(
+            "---\ntheme: x\n---\n\n---\nlayout: panel\n---\nJust the body.\n",
+            toml,
+        );
+        assert!(
+            html.contains("class=\"block block-rail\" style=\"grid-column:1/11;grid-row:1/37;background-color:var(--accent);\""),
+            "{html}"
+        );
+        assert!(html.contains("block-body")); // sink resolved to body…
+        assert!(html.contains("Just the body.")); // …and received the loose text
+    }
+
+    #[test]
+    fn empty_unpainted_block_does_not_render() {
+        // Same layout sans paint: an unfilled `rail` must vanish (regression guard).
+        let toml = concat!(
+            "name=\"x\"\n",
+            "[layout.panel.blocks]\n",
+            "rail = { at = \"x1 y1 x10 y36\" }\n",
+            "body = { at = \"x12 y5 x60 y32\" }\n",
+        );
+        let html = build_themed(
+            "---\ntheme: x\n---\n\n---\nlayout: panel\n---\n:::body\nB\n:::\n",
+            toml,
+        );
+        assert!(!html.contains("block-rail"), "{html}");
+    }
+
+    #[test]
+    fn painted_block_can_carry_named_content() {
+        let toml = concat!(
+            "name=\"x\"\n",
+            "[layout.panel.blocks]\n",
+            "rail = { at = \"x1 y1 x10 y36\", background-color = \"#fff\" }\n",
+            "body = { at = \"x12 y5 x60 y32\" }\n",
+        );
+        let html = build_themed(
+            "---\ntheme: x\n---\n\n---\nlayout: panel\n---\n:::rail\n## Label\n:::\n:::body\nB\n:::\n",
+            toml,
+        );
+        // Paint + content coexist on the same block.
+        assert!(html.contains("background-color:#fff;"));
+        assert!(html.contains("<h2>Label</h2>"));
     }
 
     #[test]

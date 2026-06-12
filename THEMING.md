@@ -185,6 +185,7 @@ Every block needs `at`; the rest are optional. Set on any block in a
 | `align-y` | `top` \| `center` \| `bottom` | `top` | Vertical alignment (`.block.ay-center`/`.ay-end`). → `background-position` Y on a fixed `image` block, and `object-position` Y for a `cover`/`contain` content image |
 | `fit` | `none` \| `scale` \| `cover` \| `contain` | `none` | Content sizing (`.block.fit-*`); see [Overflow](#overflow). On an `image` block → `background-size` (`cover` crops, else `contain`) |
 | `image-size` | any CSS `background-size` (`80%`, `4cqmin`, `auto`, …) | — | `image` blocks only: explicit `background-size`, overriding `fit`'s shorthand |
+| `background-color` | any CSS colour (`var(--accent)`, `#fff`, …) | — | Paint the block's `background-color`. A **block of colour** for decoration (no SVG): a painted block **renders even when empty**, and is **excluded from the loose-Markdown sink**, so it never steals the body. Still editable — address it by name (`:::panel`) to lay content over the fill. Rejected on an `image` block (the image's background shorthand wins) |
 | `column` | a name | — | Flow this block in a logical column (see [Columns](#logical-columns)); blocks sharing a name stack at their bounding-box rect |
 | `expandable-y` | `true` \| `false` | `false` | In a `column`: grow past the nominal `at` height with content, pushing siblings down |
 | `fill` | `true` \| `false` | `false` | In a `column`: absorb the remaining space |
@@ -382,6 +383,7 @@ the implicit single-sink `body`/`head`) per layout, each rendered as
 | quote | `layout-quote` | `body`, `cite` | `.block-body::before` (opening “ mark), `.block-cite p::before` (— dash) |
 | two-col | `layout-two-col` | `head`, `left`, `right` | `.block-head` (bottom-aligned) |
 | media-split | `layout-media-split` | `media`, `body` | `.block-media` (cover image, `fit:cover`), `.block-body` (padded) |
+| panel | `layout-panel` | `rail` (painted), `body` | `rail` is a [`background-color`](#block-properties) colour band that renders empty; `.block-rail h2` (label over the fill), `.block-body` (centered) |
 | stat | `layout-stat` | `head`, `figure` (repeatable) | `.block-figure strong` (the big number), `.block-figure p` (label) |
 | compare | `layout-compare` | `head`, `left`, `right` | `.block-left`/`.block-right` are cards (`--bg-2`); `h3`, `li` |
 | code | `layout-code` | `body` | `pre`, `pre code`, syntax tokens (below) |

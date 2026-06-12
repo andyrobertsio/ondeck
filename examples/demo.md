@@ -230,6 +230,19 @@ Same layout, `media: right` — the image mirrors to the other side.
 :::
 
 ---
+layout: panel
+---
+:::rail
+## Field ops
+:::
+:::body
+# A block of colour, no SVG
+
+The accent rail is painted by a block's `background-color` — it renders from
+that alone (even empty), so decorative panels are data now, not images.
+:::
+
+---
 layout: raw
 ---
 <div style="display:flex;height:100%;align-items:center;justify-content:center;gap:2rem;font-family:sans-serif">

@@ -342,11 +342,13 @@ editable; `repeatable = true` makes it a per-entry stamp.
 
 **Block properties:** `at` (required), `image`/`text` (content → fixed),
 `layer` (`front`|`behind`), `opacity`, `align-x`/`align-y` (default top-left),
-`fit` (`none`*default*|`scale`|`cover`|`contain`), `transition`, `column` +
-`expandable-y`/`fill` (see below), and `repeatable` +
+`fit` (`none`*default*|`scale`|`cover`|`contain`), `background-color`,
+`transition`, `column` + `expandable-y`/`fill` (see below), and `repeatable` +
 `repeatable-direction`/`-margin`/`-limit`/`-align`. An `image` block renders as
 a CSS background, positioned by `align-x`/`align-y` and sized by `fit` (or an
-explicit `image-size`). A layout selects furniture via `template = "<name>"` or
+explicit `image-size`). A `background-color` paints the block as a decorative
+colour panel: it renders even when empty and is excluded from the loose-Markdown
+sink (address it by name to put content over the fill). A layout selects furniture via `template = "<name>"` or
 `template = "none"`; with neither, it inherits the deck's `default` template. A
 template or layout may also carry a `[…tokens]` table — token overrides scoped to
 slides using it (`.template-<name>`/`.layout-<name>`), so a dark-mode template
