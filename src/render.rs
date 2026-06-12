@@ -353,6 +353,196 @@ fn render_one_block(
     }
 }
 
+/// A block's rendered inner HTML (no wrapper), for a column member (a flex item
+/// rather than a grid-placed div). Repeatables aren't supported in a column.
+fn block_inner(
+    b: &Block,
+    authored: &Authored,
+    plugins: &Plugins,
+    cfg: &FragConfig,
+    counter: &mut u32,
+    sink: Option<&str>,
+) -> String {
+    match &b.content {
+        BlockContent::Text(t) => md(t, plugins),
+        BlockContent::Image(_) => String::new(),
+        BlockContent::Editable => {
+            let bcfg = FragConfig {
+                auto_li: cfg.auto_li,
+                default_fx: b
+                    .transition
+                    .clone()
+                    .unwrap_or_else(|| cfg.default_fx.clone()),
+            };
+            if let Some(inst) = authored.named.get(&b.name).and_then(|v| v.first()) {
+                md_frag(&inst.content, plugins, &bcfg, counter)
+            } else if sink == Some(b.name.as_str()) {
+                md_frag(&authored.body, plugins, &bcfg, counter)
+            } else {
+                String::new()
+            }
+        }
+    }
+}
+
+/// A column member's inner HTML plus any inline background. An image member
+/// renders as a CSS background on its own div (it isn't grid-placed).
+fn member_content(
+    b: &Block,
+    authored: &Authored,
+    plugins: &Plugins,
+    cfg: &FragConfig,
+    counter: &mut u32,
+    sink: Option<&str>,
+) -> (String, String) {
+    match &b.content {
+        BlockContent::Image(url) => {
+            let size = if b.fit == Fit::Cover {
+                "cover"
+            } else {
+                "contain"
+            };
+            (
+                String::new(),
+                format!("background:{url} center/{size} no-repeat;"),
+            )
+        }
+        _ => (
+            block_inner(b, authored, plugins, cfg, counter, sink),
+            String::new(),
+        ),
+    }
+}
+
+/// Render a logical column. Members sharing a y-range form a horizontal **band**
+/// (a flex row); bands stack in a flex column placed at the members' bounding-box
+/// rect, sized from their `at` rows — `expandable-y` grows with content, `fill`
+/// absorbs the remainder, and gaps (vertical between bands, horizontal within a
+/// band) are kept as fixed spacers so they survive expansion.
+#[allow(clippy::too_many_arguments)]
+fn render_column(
+    name: &str,
+    members: &[&Block],
+    theme: &Theme,
+    authored: &Authored,
+    plugins: &Plugins,
+    cfg: &FragConfig,
+    counter: &mut u32,
+    sink: Option<&str>,
+    media_right: bool,
+) -> String {
+    let mut mem = members.to_vec();
+    mem.sort_by_key(|b| b.rect.row_start);
+
+    let col_start = mem.iter().map(|b| b.rect.col_start).min().unwrap_or(1);
+    let col_end = mem.iter().map(|b| b.rect.col_end).max().unwrap_or(1);
+    let row_start = mem.iter().map(|b| b.rect.row_start).min().unwrap_or(1);
+    let row_end = mem.iter().map(|b| b.rect.row_end).max().unwrap_or(1);
+    let total = (row_end - row_start).max(1) as f32;
+    let bbox = Rect {
+        col_start,
+        col_end,
+        row_start,
+        row_end,
+    };
+    let bbox = if media_right {
+        bbox.mirror_cols(theme.cols)
+    } else {
+        bbox
+    };
+
+    // A row/col is this % of the slide; gaps become fixed margins (cqh/cqw, not
+    // %, since % margins are width-relative) so they survive expansion.
+    let row_cqh = 100.0 / theme.rows.max(1) as f32;
+    let col_cqw = 100.0 / theme.cols.max(1) as f32;
+
+    // Group members into bands: those sharing a starting row (aligned tops) sit
+    // side by side. A mere boundary touch from inclusive `at` coords — e.g. head
+    // ending at y8 and body starting at y8 (which share row 8) — still stacks,
+    // because their tops differ.
+    let mut bands: Vec<Vec<&Block>> = Vec::new();
+    for &b in &mem {
+        match bands.last_mut() {
+            Some(band) if band[0].rect.row_start == b.rect.row_start => band.push(b),
+            _ => bands.push(vec![b]),
+        }
+    }
+
+    let mut inner = String::new();
+    let mut prev_end = row_start; // bbox top → no leading gap before the first band
+    for band in &bands {
+        let b_start = band.iter().map(|b| b.rect.row_start).min().unwrap();
+        let b_end = band.iter().map(|b| b.rect.row_end).max().unwrap();
+        let gap = b_start.saturating_sub(prev_end) as f32;
+        prev_end = b_end;
+        let frac = (b_end - b_start) as f32 / total * 100.0;
+
+        // The band's role comes from its members.
+        let mut bstyle = if band.iter().any(|b| b.fill) {
+            String::from("flex:1 1 0;min-height:0;")
+        } else if band.iter().any(|b| b.expandable_y) {
+            format!("flex:0 0 auto;min-height:{frac:.3}%;")
+        } else {
+            format!("flex:0 0 {frac:.3}%;")
+        };
+        if gap > 0.0 {
+            bstyle.push_str(&format!("margin-top:{:.3}cqh;", gap * row_cqh));
+        }
+
+        if band.len() == 1 {
+            let b = band[0];
+            if let Some(o) = b.opacity {
+                bstyle.push_str(&format!("opacity:{o};"));
+            }
+            let (content, bg) = member_content(b, authored, plugins, cfg, counter, sink);
+            bstyle.push_str(&bg);
+            inner.push_str(&format!(
+                "<div class=\"{}\" style=\"{}\">{}</div>",
+                block_classes(b),
+                bstyle,
+                content
+            ));
+        } else {
+            // Horizontal band: members side by side, sized by their x-span.
+            let mut row = band.clone();
+            row.sort_by_key(|b| b.rect.col_start);
+            let bc_start = row.iter().map(|b| b.rect.col_start).min().unwrap();
+            let bc_end = row.iter().map(|b| b.rect.col_end).max().unwrap();
+            let bcols = (bc_end - bc_start).max(1) as f32;
+            let mut row_inner = String::new();
+            let mut prev_col = bc_start;
+            for &b in &row {
+                let hgap = b.rect.col_start.saturating_sub(prev_col) as f32;
+                prev_col = b.rect.col_end;
+                let wfrac = (b.rect.col_end - b.rect.col_start) as f32 / bcols * 100.0;
+                let mut mstyle = format!("flex:0 0 {wfrac:.3}%;");
+                if hgap > 0.0 {
+                    mstyle.push_str(&format!("margin-left:{:.3}cqw;", hgap * col_cqw));
+                }
+                if let Some(o) = b.opacity {
+                    mstyle.push_str(&format!("opacity:{o};"));
+                }
+                let (content, bg) = member_content(b, authored, plugins, cfg, counter, sink);
+                mstyle.push_str(&bg);
+                row_inner.push_str(&format!(
+                    "<div class=\"{}\" style=\"{}\">{}</div>",
+                    block_classes(b),
+                    mstyle,
+                    content
+                ));
+            }
+            inner.push_str(&format!(
+                "<div class=\"block-band\" style=\"{bstyle}\">{row_inner}</div>"
+            ));
+        }
+    }
+    format!(
+        "<div class=\"block-column block-column-{name}\" style=\"{}\">{}</div>",
+        bbox.style(),
+        inner
+    )
+}
+
 /// Build `.slide-content`: the union of the layout's selected template furniture
 /// and the layout's own blocks.
 fn build_blocks(
@@ -381,7 +571,13 @@ fn build_blocks(
         None
     };
 
+    // Grid-placed blocks render inline; blocks with a `column` flow together.
+    let mut columns: BTreeMap<&str, Vec<&Block>> = BTreeMap::new();
     for b in &layout.blocks {
+        if let Some(col) = &b.column {
+            columns.entry(col.as_str()).or_default().push(b);
+            continue;
+        }
         let rect = if media_right {
             b.rect.mirror_cols(theme.cols)
         } else {
@@ -389,6 +585,19 @@ fn build_blocks(
         };
         out.push_str(&render_one_block(
             b, rect, authored, plugins, cfg, counter, sink,
+        ));
+    }
+    for (name, members) in &columns {
+        out.push_str(&render_column(
+            name,
+            members,
+            theme,
+            authored,
+            plugins,
+            cfg,
+            counter,
+            sink,
+            media_right,
         ));
     }
     out
@@ -685,6 +894,94 @@ mod tests {
         render(&doc, &theme, Path::new("."), false) // inline=false: no fs access
     }
 
+    fn build_themed(src: &str, theme_toml: &str) -> String {
+        let doc = parser::parse(src);
+        let theme = Theme::from_parts(theme_toml, "", None).unwrap();
+        render(&doc, &theme, Path::new("."), false)
+    }
+
+    #[test]
+    fn column_blocks_flow_in_a_flex_wrapper() {
+        let toml = concat!(
+            "name=\"x\"\n",
+            "[layout.col.blocks]\n",
+            "eyebrow = { at = \"x4 y2 x20 y3\", column = \"main\" }\n",
+            "head = { at = \"x4 y4 x20 y11\", column = \"main\", expandable-y = true }\n",
+            "body = { at = \"x4 y12 x20 y32\", column = \"main\", fill = true }\n",
+        );
+        let html = build_themed(
+            "---\ntheme: x\n---\n\n---\nlayout: col\n---\n:::eyebrow\nE\n:::\n:::head\n# T\n:::\n:::body\nB\n:::\n",
+            toml,
+        );
+        // One flex wrapper at the members' bounding box.
+        assert!(html.contains("block-column block-column-main"));
+        assert_eq!(html.matches("block-column-main").count(), 1);
+        // eyebrow fixed, head expandable (min-height), body fill.
+        assert!(html.contains("flex:0 0 ")); // eyebrow fixed basis
+        assert!(html.contains("flex:0 0 auto;min-height:")); // head grows
+        assert!(html.contains("flex:1 1 0;min-height:0;")); // body absorbs
+                                                            // Column members are NOT grid-placed.
+        assert!(html.contains("class=\"block block-head\" style=\"flex:0 0 auto"));
+    }
+
+    #[test]
+    fn column_gaps_become_fixed_margins() {
+        // A 3-row gap (y9–y11) between head and body is preserved as a margin so
+        // it survives the head expanding (cqh, not %, on the default 36-row grid).
+        let toml = concat!(
+            "name=\"x\"\n",
+            "[layout.col.blocks]\n",
+            "head = { at = \"x4 y4 x20 y8\", column = \"main\", expandable-y = true }\n",
+            "body = { at = \"x4 y12 x20 y32\", column = \"main\", fill = true }\n",
+        );
+        let html = build_themed(
+            "---\ntheme: x\n---\n\n---\nlayout: col\n---\n:::head\n# T\n:::\n:::body\nB\n:::\n",
+            toml,
+        );
+        // 3 rows × (100/36)cqh = 8.333cqh on the body (the gapped member).
+        assert!(html.contains("margin-top:8.333cqh;"));
+    }
+
+    #[test]
+    fn same_row_column_members_form_a_horizontal_band() {
+        // head full-width over a left/right pair sharing a y-range — the pair is
+        // one horizontal band (so the expanding head pushes both together).
+        let toml = concat!(
+            "name=\"x\"\n",
+            "[layout.tc.blocks]\n",
+            "head = { at = \"x6 y4 x58 y9\", column = \"main\", expandable-y = true }\n",
+            "left = { at = \"x6 y11 x30 y32\", column = \"main\", fill = true }\n",
+            "right = { at = \"x34 y11 x58 y32\", column = \"main\", fill = true }\n",
+        );
+        let html = build_themed(
+            "---\ntheme: x\n---\n\n---\nlayout: tc\n---\n:::head\n# T\n:::\n:::left\nL\n:::\n:::right\nR\n:::\n",
+            toml,
+        );
+        // One band wrapper around left+right; head is not banded.
+        assert_eq!(html.matches("class=\"block-band\"").count(), 1);
+        // Members in the band are width-sized with a horizontal gap margin.
+        assert!(html.contains("class=\"block block-left\" style=\"flex:0 0 "));
+        assert!(html.contains("class=\"block block-right\" style=\"flex:0 0 "));
+        assert!(html.contains("margin-left:")); // the x31–33 gutter
+    }
+
+    #[test]
+    fn boundary_touch_from_inclusive_coords_stacks() {
+        // head ends at y8, body starts at y8 → they share row 8 (inclusive `at`),
+        // but their tops differ, so they stack — not a side-by-side band.
+        let toml = concat!(
+            "name=\"x\"\n",
+            "[layout.col.blocks]\n",
+            "head = { at = \"x4 y4 x40 y8\", column = \"main\", expandable-y = true }\n",
+            "body = { at = \"x4 y8 x40 y32\", column = \"main\", fill = true }\n",
+        );
+        let html = build_themed(
+            "---\ntheme: x\n---\n\n---\nlayout: col\n---\n:::head\n# T\n:::\n:::body\nB\n:::\n",
+            toml,
+        );
+        assert!(!html.contains("class=\"block-band\"")); // stacked, not banded
+    }
+
     #[test]
     fn layouts_emit_classes_and_blocks() {
         let html = build("---\nlayout: title\n---\n# Hi\n---\nlayout: bullets\n---\n- a\n- b\n");
@@ -790,6 +1087,9 @@ mod tests {
             image_size: None,
             transition: None,
             repeat: None,
+            column: None,
+            expandable_y: false,
+            fill: false,
         };
         let html = emit_image_block(&b, &b.rect, "url('x.png')");
         assert!(html.contains("right top/contain"), "{html}");

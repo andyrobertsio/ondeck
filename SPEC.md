@@ -211,6 +211,7 @@ Markdown (single-sink); multi-block layouts need `:::name` on each block.
 | `title` | `body` (`#` title, `##` subtitle, rest meta) | Opening slide |
 | `section` | `body` | Section divider |
 | `bullets` *(default)* | `body` | The workhorse |
+| `lede` | `head`, `body` | Heading + body in a logical column — a long `head` grows and pushes `body` down |
 | `two-col` | `head`, `left`, `right` | Side by side |
 | `media-split` | `media` (cover image, `fit:cover`), `body`; `media: right` mirrors | Image one side (full-bleed), text the other |
 | `statement` | `body` | Big centered idea |
@@ -341,14 +342,29 @@ editable; `repeatable = true` makes it a per-entry stamp.
 
 **Block properties:** `at` (required), `image`/`text` (content → fixed),
 `layer` (`front`|`behind`), `opacity`, `align-x`/`align-y` (default top-left),
-`fit` (`none`*default*|`scale`|`cover`|`contain`), `transition`, and `repeatable`
-+ `repeatable-direction`/`-margin`/`-limit`/`-align`. An `image` block renders as
+`fit` (`none`*default*|`scale`|`cover`|`contain`), `transition`, `column` +
+`expandable-y`/`fill` (see below), and `repeatable` +
+`repeatable-direction`/`-margin`/`-limit`/`-align`. An `image` block renders as
 a CSS background, positioned by `align-x`/`align-y` and sized by `fit` (or an
 explicit `image-size`). A layout selects furniture via `template = "<name>"` or
 `template = "none"`; with neither, it inherits the deck's `default` template. A
 template or layout may also carry a `[…tokens]` table — token overrides scoped to
 slides using it (`.template-<name>`/`.layout-<name>`), so a dark-mode template
 flips `bg`/`fg` as data instead of a CSS rule (layout tokens win over template).
+
+**Logical columns.** Blocks are placed at fixed rects, so overflow clips. Blocks
+sharing a `column = "<name>"` instead **flow** in a flex column (`.block-column`)
+placed at their bounding-box rect, ordered by `at`: each is fixed-height by
+default, `expandable-y` grows with content (pushing siblings), `fill` absorbs the
+remainder. Members that share a **starting row** (aligned tops) form a horizontal
+**band** (`.block-band`) laid out side by side, so a heading can push a
+two-column body down as a unit (a boundary touch from inclusive `at` still
+stacks). A gap between members' `at` rows is kept as a fixed spacer (so it
+survives expansion). Short content is pixel-identical to the fixed grid; long
+content
+pushes within the column rect (clipping if even that overflows). This trades
+determinism for content-adaptive layout — the long-title-pushes-content case —
+and is opt-in per block.
 
 **Validation:** at most one `default` template per theme; `at` required; a block
 can't be both fixed and `repeatable`; a layout can't name a template that doesn't
@@ -409,9 +425,10 @@ Remote assets (e.g. a Google Fonts `@import`) are not fetched.
   deck. A theme layers on base and may `extends = "<other>"` to inherit its
   tokens/layouts/templates/CSS (chains followed, cycle-detected). The bundled
   `default` theme owns the core layouts; `bold`/`paper` extend it.
-- Layouts: `title`, `section`, `bullets`, `statement`, `quote`, `two-col`,
-  `media-split`, `stat` (repeatable figures), `compare`, `code`, `table`, `image`,
-  `raw`, `free`. Themed Markdown tables with column/row/row-header emphasis.
+- Layouts: `title`, `section`, `bullets`, `lede`, `statement`, `quote`,
+  `two-col`, `media-split`, `stat` (repeatable figures), `compare`, `code`,
+  `table`, `image`, `raw`, `free`. Themed Markdown tables with
+  column/row/row-header emphasis. Logical columns (`expandable-y`/`fill`).
 - **Templates** (theme furniture) + **blocks** (the unified placed-region
   primitive): fixed vs editable by content, single-sink authoring, repeatables.
 - Fixed-aspect **stage** (1920×1080 / 16:9 default) with letterbox; pure-CSS

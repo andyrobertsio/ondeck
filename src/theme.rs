@@ -98,6 +98,13 @@ pub struct Block {
     pub image_size: Option<String>,
     pub transition: Option<String>,
     pub repeat: Option<Repeat>,
+    /// Logical column this block flows in (blocks sharing a name stack and can
+    /// push each other; placed at their bounding-box rect). `None` = grid-placed.
+    pub column: Option<String>,
+    /// In a column: grow past the nominal height (from `at`), pushing siblings.
+    pub expandable_y: bool,
+    /// In a column: absorb the remaining space.
+    pub fill: bool,
 }
 
 impl Block {
@@ -215,6 +222,12 @@ struct BlockFile {
     fit: Option<String>,
     #[serde(default, rename = "image-size")]
     image_size: Option<String>,
+    #[serde(default)]
+    column: Option<String>,
+    #[serde(default, rename = "expandable-y")]
+    expandable_y: bool,
+    #[serde(default)]
+    fill: bool,
     #[serde(default)]
     transition: Option<String>,
     #[serde(default)]
@@ -358,6 +371,9 @@ fn resolve_block(
         image_size: f.image_size.clone(),
         transition: f.transition.clone(),
         repeat,
+        column: f.column.clone(),
+        expandable_y: f.expandable_y,
+        fill: f.fill,
     })
 }
 
@@ -401,7 +417,7 @@ impl Theme {
     /// Assemble a single in-memory theme (base substrate + this one, no
     /// `extends` resolution). Test helper.
     #[cfg(test)]
-    fn from_parts(
+    pub(crate) fn from_parts(
         toml_src: &str,
         css_src: &str,
         asset_base: Option<&Path>,
@@ -637,6 +653,22 @@ mod tests {
         );
         let t = Theme::from_parts(toml, "", None).unwrap();
         assert_eq!(t.templates["brand"][0].image_size.as_deref(), Some("80%"));
+    }
+
+    #[test]
+    fn column_block_props_parse() {
+        let toml = concat!(
+            "[layout.col.blocks]\n",
+            "head = { at = \"x4 y4 x20 y11\", column = \"main\", expandable-y = true }\n",
+            "body = { at = \"x4 y12 x20 y32\", column = \"main\", fill = true }\n",
+        );
+        let t = Theme::from_parts(toml, "", None).unwrap();
+        let blocks = &t.layouts["col"].blocks;
+        let head = blocks.iter().find(|b| b.name == "head").unwrap();
+        let body = blocks.iter().find(|b| b.name == "body").unwrap();
+        assert_eq!(head.column.as_deref(), Some("main"));
+        assert!(head.expandable_y && !head.fill);
+        assert!(body.fill && !body.expandable_y);
     }
 
     #[test]
